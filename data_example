@@ -11,7 +11,7 @@ Block = {
   "accents": [
     2, 3
   ],
-  "count" : null
+  "maybeCount" : null
 }
 
 { 
@@ -23,7 +23,7 @@ Block = {
       "accents": [
         2, 3
       ],
-      "count" : null
+      "maybeCount" : null
     }
   ]
 }
