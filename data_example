@@ -1,0 +1,29 @@
+Song = { 
+  "track": "Song",
+  "artist": "Test",
+  "blocks": [
+
+  ]
+}
+
+Block = { 
+  "tempo" : 120,
+  "accents": [
+    2, 3
+  ],
+  "count" : null
+}
+
+{ 
+  "track": "Song",
+  "artist": "Test",
+  "blocks": [
+    { 
+      "tempo" : 120,
+      "accents": [
+        2, 3
+      ],
+      "count" : null
+    }
+  ]
+}
