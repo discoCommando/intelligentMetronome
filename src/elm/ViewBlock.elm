@@ -59,6 +59,14 @@ update msg model =
                         |> Return.singleton
 
 
+viewAddRemoveButtons : Bool -> Int -> Html.Html Msg
+viewAddRemoveButtons minusDisabled id =
+    Html.div [ Html.Attributes.class "add-remove-buttons" ]
+        [ Html.button [ Html.Attributes.class "add-button" ] [ Html.text "+" ]
+        , Html.button [ Html.Attributes.class "remove-button", Html.Attributes.disabled minusDisabled ] [ Html.text "-" ]
+        ]
+
+
 viewAccent : Bool -> String -> Int -> Html.Html Msg
 viewAccent highlight label tempo =
     let
@@ -80,12 +88,14 @@ viewAccent highlight label tempo =
 
 viewBlockIdle : Types.Block -> List (Html.Html Msg)
 viewBlockIdle block =
-    block.accents
-        |> List.map
-            (\accent ->
-                [ Html.div [ Html.Attributes.class "accents" ] <| List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 accent) ]
+    (block.accents
+        |> List.indexedMap
+            (\i accent ->
+                [ Html.div [ Html.Attributes.class "accents" ] <| List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 accent) ++ [ viewAddRemoveButtons False i ] ]
             )
         |> List.concat
+    )
+        ++ [ Html.div [ Html.Attributes.class "accents" ] [ viewAddRemoveButtons True <| List.length block.accents ] ]
 
 
 zipOnlyLast : List Int -> List Int -> List ( Int, Maybe Int )
