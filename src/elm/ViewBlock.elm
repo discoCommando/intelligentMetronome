@@ -62,8 +62,8 @@ update msg model =
 viewAddRemoveButtons : Bool -> Int -> Html.Html Msg
 viewAddRemoveButtons minusDisabled id =
     Html.div [ Html.Attributes.class "add-remove-buttons" ]
-        [ Html.button [ Html.Attributes.class "add-button" ] [ Html.text "+" ]
-        , Html.button [ Html.Attributes.class "remove-button", Html.Attributes.disabled minusDisabled ] [ Html.text "-" ]
+        [ Html.button [ Html.Attributes.class "add-button", Html.Events.onClick <| Add id ] [ Html.text "+" ]
+        , Html.button [ Html.Attributes.class "remove-button", Html.Attributes.disabled minusDisabled, Html.Events.onClick <| Remove id ] [ Html.text "-" ]
         ]
 
 

@@ -40,6 +40,11 @@ type Msg
     | ViewMsg ViewBlock.Msg
 
 
+
+--| Add Int
+--| Remove Int
+
+
 type Click
     = High
     | Low
@@ -110,6 +115,54 @@ update msg model =
                             }
                                 |> Return.singleton
                                 |> Return.command (click <| toString <| High)
+
+                    ViewMsg (ViewBlock.Add i) ->
+                        let
+                            addToBlock block i =
+                                if i > List.length block.accents then
+                                    block
+                                else if i == List.length block.accents then
+                                    { block | accents = block.accents ++ [ 1 ] }
+                                else
+                                    { block
+                                        | accents =
+                                            List.indexedMap
+                                                (\index a ->
+                                                    if (index == i) then
+                                                        a + 1
+                                                    else
+                                                        a
+                                                )
+                                                block.accents
+                                    }
+                        in
+                            { model | block = addToBlock model.block i }
+                                |> Return.singleton
+
+                    ViewMsg (ViewBlock.Remove i) ->
+                        let
+                            removeFromBlock block i =
+                                if i >= List.length block.accents then
+                                    block
+                                else
+                                    { block
+                                        | accents =
+                                            List.indexedMap
+                                                (\index a ->
+                                                    if (index == i) then
+                                                        if a == 1 then
+                                                            []
+                                                        else
+                                                            [ a - 1 ]
+                                                    else
+                                                        [ a ]
+                                                )
+                                                block.accents
+                                                |> List.concat
+                                    }
+                        in
+                            { model | block = removeFromBlock model.block i }
+                                |> Return.singleton
 
                     _ ->
                         model
@@ -242,11 +295,11 @@ block =
     case
         Json.Decode.decodeString decodeBlock """
         {
-          "tempo" : 60,
+          "tempo" : 240,
           "accents": [
-            10, 3, 2, 4
+            4
           ],
-          "maybeCount" : 5
+          "maybeCount" : null
         }
 """
     of
