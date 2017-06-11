@@ -1,8 +1,8 @@
 module ViewBlock exposing (..)
 
-import Html
-import Html.Attributes
-import Html.Events
+import Html exposing (..)
+import Html.Attributes exposing (..)
+import Html.Events exposing (..)
 import Types
 import Return
 import Json.Decode
@@ -30,6 +30,9 @@ type alias Model =
 type Msg
     = Add Int
     | Remove Int
+    | ChangeTempo String
+    | CheckInfinity Bool
+    | ChangeCount String
       -- external messages
     | Tick WorkingState
     | New Types.Block
@@ -59,43 +62,110 @@ update msg model =
                         |> Return.singleton
 
 
-viewAddRemoveButtons : Bool -> Int -> Html.Html Msg
+viewAddRemoveButtons : Bool -> Int -> Html Msg
 viewAddRemoveButtons minusDisabled id =
-    Html.div [ Html.Attributes.class "add-remove-buttons" ]
-        [ Html.button [ Html.Attributes.class "add-button", Html.Events.onClick <| Add id ] [ Html.text "+" ]
-        , Html.button [ Html.Attributes.class "remove-button", Html.Attributes.disabled minusDisabled, Html.Events.onClick <| Remove id ] [ Html.text "-" ]
+    div [ class "add-remove-buttons" ]
+        [ button
+            [ class "add-button"
+            , onClick <| Add id
+            ]
+            [ text "+" ]
+        , button
+            [ class "remove-button"
+            , disabled minusDisabled
+            , onClick <| Remove id
+            ]
+            [ text "-" ]
         ]
 
 
-viewAccent : Bool -> String -> Int -> Html.Html Msg
+viewAccent : Bool -> String -> Int -> Html Msg
 viewAccent highlight label tempo =
     let
         attributes =
             case highlight of
                 True ->
-                    [ Html.Attributes.class "accent highlight"
-                    , Html.Attributes.style [ ( "animation-duration", (Basics.toString <| Basics.floor ((60000 * Time.millisecond) / Basics.toFloat tempo)) ++ "ms" ) ]
+                    [ class "accent highlight"
+                    , style
+                        [ ( "animation-duration"
+                          , (Basics.toString <| Basics.floor ((60000 * Time.millisecond) / Basics.toFloat tempo)) ++ "ms"
+                          )
+                        ]
                     ]
 
                 False ->
-                    [ Html.Attributes.class "accent"
+                    [ class "accent"
                     ]
     in
-        Html.div
+        div
             attributes
-            [ Html.text label ]
+            [ text label ]
 
 
-viewBlockIdle : Types.Block -> List (Html.Html Msg)
+isJust : Maybe a -> Bool
+isJust a =
+    case a of
+        Maybe.Nothing ->
+            False
+
+        _ ->
+            True
+
+
+toInt : Maybe Int -> Int
+toInt m =
+    case m of
+        Maybe.Nothing ->
+            1
+
+        Maybe.Just a ->
+            a
+
+
+viewBlockIdle : Types.Block -> List (Html Msg)
 viewBlockIdle block =
-    (block.accents
-        |> List.indexedMap
-            (\i accent ->
-                [ Html.div [ Html.Attributes.class "accents" ] <| List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 accent) ++ [ viewAddRemoveButtons False i ] ]
-            )
-        |> List.concat
-    )
-        ++ [ Html.div [ Html.Attributes.class "accents" ] [ viewAddRemoveButtons True <| List.length block.accents ] ]
+    [ div [ class "block-info" ]
+        [ div []
+            [ text "Tempo: "
+            , input [ type_ "number", value <| Basics.toString block.tempo, onInput ChangeTempo ] [ text <| Basics.toString block.tempo ]
+            ]
+        , div []
+            [ div []
+                [ text "Count: "
+                , input
+                    [ type_ "number"
+                    , value <| Basics.toString <| toInt block.maybeCount
+                    , disabled <| Basics.not <| isJust block.maybeCount
+                    , onInput ChangeCount
+                    ]
+                    [ text <| Basics.toString block.tempo ]
+                , input
+                    [ type_ "checkbox"
+                    , checked (Basics.not <| isJust block.maybeCount)
+                    , onCheck CheckInfinity
+                    ]
+                    []
+                , text "Infinite"
+                ]
+            ]
+        ]
+    ]
+        ++ (block.accents
+                |> List.indexedMap
+                    (\i accent ->
+                        [ div [ class "accents" ] <|
+                            List.map
+                                (\index -> viewAccent False (toString index) block.tempo)
+                                (List.range 1 accent)
+                                ++ [ viewAddRemoveButtons False i ]
+                        ]
+                    )
+                |> List.concat
+           )
+        ++ [ div
+                [ class "accents" ]
+                [ viewAddRemoveButtons True <| List.length block.accents ]
+           ]
 
 
 zipOnlyLast : List Int -> List Int -> List ( Int, Maybe Int )
@@ -117,37 +187,42 @@ zipOnlyLast accents actual =
             []
 
 
-viewBlockWorking : Types.Block -> WorkingState -> List (Html.Html Msg)
+viewBlockWorking : Types.Block -> WorkingState -> List (Html Msg)
 viewBlockWorking block ws =
-    zipOnlyLast block.accents ws.actual
-        |> List.map
-            (\( accent, maybeInt ) ->
-                case maybeInt of
-                    Nothing ->
-                        [ Html.div [ Html.Attributes.class "accents" ] <| List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 accent) ]
+    [ div [ class "block-info" ]
+        [ div [] [ text "Tempo: ", input [ type_ "text", disabled True, value <| Basics.toString block.tempo ] [ text <| Basics.toString block.tempo ] ]
+        ]
+    ]
+        ++ (zipOnlyLast block.accents ws.actual
+                |> List.map
+                    (\( accent, maybeInt ) ->
+                        case maybeInt of
+                            Nothing ->
+                                [ div [ class "accents" ] <| List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 accent) ]
 
-                    Just x ->
-                        [ Html.div [ Html.Attributes.class "accents" ] <|
-                            List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 (x - 1))
-                                ++ [ viewAccent (Basics.not ws.stopped) (toString x) block.tempo ]
-                                ++ List.map (\index -> viewAccent False (toString index) block.tempo) (List.range (x + 1) accent)
-                        ]
-            )
-        |> List.concat
+                            Just x ->
+                                [ div [ class "accents" ] <|
+                                    List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 (x - 1))
+                                        ++ [ viewAccent (Basics.not ws.stopped) (toString x) block.tempo ]
+                                        ++ List.map (\index -> viewAccent False (toString index) block.tempo) (List.range (x + 1) accent)
+                                ]
+                    )
+                |> List.concat
+           )
 
 
-view : Model -> Html.Html Msg
+view : Model -> Html Msg
 view model =
     case model.status of
         Idle ->
-            Html.div
-                [ Html.Attributes.class "block idle"
+            div
+                [ class "block idle"
                 ]
                 (viewBlockIdle model.block)
 
         Working ws ->
-            Html.div
-                [ Html.Attributes.class "block working"
+            div
+                [ class "block working"
                 ]
                 (viewBlockWorking model.block ws)
 
@@ -184,7 +259,7 @@ subscriptions model =
 
 
 main =
-    Html.program
+    program
         { init = init
         , view = view
         , update = update

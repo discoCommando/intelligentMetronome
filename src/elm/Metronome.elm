@@ -10,6 +10,7 @@ import Time
 import Platform.Cmd
 import Animation exposing (px, turn, percent)
 import ViewBlock
+import String
 
 
 type alias WorkingState =
@@ -163,6 +164,68 @@ update msg model =
                         in
                             { model | block = removeFromBlock model.block i }
                                 |> Return.singleton
+
+                    ViewMsg (ViewBlock.ChangeCount s) ->
+                        case String.toInt s of
+                            Result.Ok i ->
+                                let
+                                    block =
+                                        model.block
+
+                                    updateMaybeCount maybeCount i =
+                                        case maybeCount of
+                                            Just c ->
+                                                Just i
+
+                                            Nothing ->
+                                                Nothing
+                                in
+                                    { model | block = { block | maybeCount = updateMaybeCount block.maybeCount i } }
+                                        |> Return.singleton
+
+                            _ ->
+                                model
+                                    |> Return.singleton
+
+                    ViewMsg (ViewBlock.CheckInfinity b) ->
+                        let
+                            block =
+                                model.block
+
+                            updateMaybeCount maybeCount bool =
+                                case maybeCount of
+                                    Just c ->
+                                        case b of
+                                            True ->
+                                                Nothing
+
+                                            False ->
+                                                Just c
+
+                                    Nothing ->
+                                        case b of
+                                            True ->
+                                                Nothing
+
+                                            False ->
+                                                Just 1
+                        in
+                            { model | block = { block | maybeCount = updateMaybeCount block.maybeCount b } }
+                                |> Return.singleton
+
+                    ViewMsg (ViewBlock.ChangeTempo s) ->
+                        case String.toInt s of
+                            Result.Ok i ->
+                                let
+                                    block =
+                                        model.block
+                                in
+                                    { model | block = { block | tempo = i } }
+                                        |> Return.singleton
+
+                            _ ->
+                                model
+                                    |> Return.singleton
 
                     _ ->
                         model
