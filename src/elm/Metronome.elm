@@ -9,6 +9,7 @@ import Html.Events exposing (..)
 import Time
 import Platform.Cmd
 import Animation exposing (px, turn, percent)
+import ViewBlock
 
 
 type alias WorkingState =
@@ -36,18 +37,12 @@ type Msg
     | Start
     | Stop
     | Reset
+    | ViewMsg ViewBlock.Msg
 
 
 type Click
     = High
     | Low
-
-
-initialModel : Block -> Model
-initialModel block =
-    { block = block
-    , status = Idle
-    }
 
 
 
@@ -69,6 +64,11 @@ stripList list =
              else
                 ( False, Just (x - 1 :: xs) )
             )
+
+
+wsToViewBlockws : WorkingState -> ViewBlock.WorkingState
+wsToViewBlockws ws =
+    { maybeCount = ws.maybeCount, actual = ws.actual }
 
 
 update : Msg -> Model -> Return Msg Model
@@ -101,9 +101,15 @@ update msg model =
             Idle ->
                 case msg of
                     Start ->
-                        { model | status = Working { accents = model.block.accents, maybeCount = model.block.maybeCount, stopped = False, actual = [ 1 ] } }
-                            |> Return.singleton
-                            |> Return.command (click <| toString <| High)
+                        let
+                            ws =
+                                { accents = model.block.accents, maybeCount = model.block.maybeCount, stopped = False, actual = [ 1 ] }
+                        in
+                            { model
+                                | status = Working ws
+                            }
+                                |> Return.singleton
+                                |> Return.command (click <| toString <| High)
 
                     _ ->
                         model
@@ -167,63 +173,6 @@ update msg model =
                                     |> Return.singleton
 
 
-
---case msg of
---    Tick ->
---        case model.status of
---            Idle ->
---                Return.singleton model
---            Working ws ->
---                if (Basics.not ws.stopped) then
---                    case ws.maybeCount of
---                        Just count ->
---                            if (count <= 0) then
---                                { model | status = Idle }
---                                    |> Return.singleton
---                            else
---                                case stripList ws.accents of
---                                    ( beep, Maybe.Nothing ) ->
---                                        { model | status = Working { ws | accents = model.block.accents, maybeCount = Just <| count - 1 } }
---                                            |> Return.singleton
---                                            |> Return.command (click <| toString <| beepToClick beep)
---                                    ( beep, Maybe.Just newAccents ) ->
---                                        { model | status = Working { ws | accents = newAccents } }
---                                            |> Return.singleton
---                                            |> Return.command (click <| toString <| beepToClick beep)
---                        Nothing ->
---                            case stripList ws.accents of
---                                ( beep, Maybe.Nothing ) ->
---                                    { model | status = Working { ws | accents = model.block.accents } }
---                                        |> Return.singleton
---                                        |> Return.command (click <| toString <| beepToClick beep)
---                                ( beep, Maybe.Just newAccents ) ->
---                                    { model | status = Working { ws | accents = newAccents } }
---                                        |> Return.singleton
---                                        |> Return.command (click <| toString <| beepToClick beep)
---                else
---                    model |> Return.singleton
---    Start ->
---        case model.status of
---            Working ws ->
---                { model | status = Working { accents = ws.accents, maybeCount = ws.maybeCount, stopped = False } }
---                    |> Return.singleton
---                    |> Return.command (click <| toString <| High)
---            Idle ->
---                { model | status = Working { accents = model.block.accents, maybeCount = model.block.maybeCount, stopped = False } }
---                    |> Return.singleton
---                    |> Return.command (click <| toString <| High)
---    Stop ->
---        case model.status of
---            Working ws ->
---                { model | status = Working { ws | stopped = True } }
---                    |> Return.singleton
---            _ ->
---                model |> Return.singleton
---    Reset ->
---        { model | status = Idle }
---            |> Return.singleton
-
-
 view : Model -> Html Msg
 view model =
     div []
@@ -268,6 +217,18 @@ view model =
                             Html.Attributes.disabled True
             ]
             [ Html.text "Reset" ]
+        , Html.p [] []
+        , Html.div
+            []
+            [ (case model.status of
+                Idle ->
+                    ViewBlock.view { status = ViewBlock.Idle, block = model.block }
+
+                Working ws ->
+                    ViewBlock.view { status = ViewBlock.Working <| wsToViewBlockws ws, block = model.block }
+              )
+                |> Html.map ViewMsg
+            ]
         ]
 
 
@@ -276,7 +237,7 @@ block =
     case
         Json.Decode.decodeString decodeBlock """
         {
-          "tempo" : 260,
+          "tempo" : 200,
           "accents": [
             2, 3, 2, 4
           ],

@@ -1,4 +1,4 @@
-module ViewBoard exposing (..)
+module ViewBlock exposing (..)
 
 import Html
 import Html.Attributes
@@ -6,9 +6,10 @@ import Html.Events
 import Types
 import Return
 import Json.Decode
+import Time
 
 
-type alias WorkingStatus =
+type alias WorkingState =
     { maybeCount : Maybe Int
     , actual : List Int
     }
@@ -16,7 +17,7 @@ type alias WorkingStatus =
 
 type Status
     = Idle
-    | Working WorkingStatus
+    | Working WorkingState
 
 
 type alias Model =
@@ -29,7 +30,7 @@ type Msg
     = Add Int
     | Remove Int
       -- external messages
-    | Tick WorkingStatus
+    | Tick WorkingState
     | New Types.Block
 
 
@@ -57,19 +58,22 @@ update msg model =
                         |> Return.singleton
 
 
-viewAccent : Bool -> String -> Html.Html Msg
-viewAccent highlight label =
+viewAccent : Bool -> String -> Int -> Html.Html Msg
+viewAccent highlight label tempo =
     let
-        class =
+        attributes =
             case highlight of
                 True ->
-                    "highlight"
+                    [ Html.Attributes.class "accent highlight"
+                    , Html.Attributes.style [ ( "animation-duration", (Basics.toString <| Basics.floor ((60000 * Time.millisecond) / Basics.toFloat tempo)) ++ "ms" ) ]
+                    ]
 
                 False ->
-                    ""
+                    [ Html.Attributes.class "accent"
+                    ]
     in
         Html.div
-            [ Html.Attributes.class class ]
+            attributes
             [ Html.text label ]
 
 
@@ -78,7 +82,7 @@ viewBlockIdle block =
     block.accents
         |> List.map
             (\accent ->
-                List.map (\index -> viewAccent False (toString index)) (List.range 1 accent)
+                [ Html.div [] <| List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 accent) ]
                     ++ [ Html.p [] [] ]
             )
         |> List.concat
@@ -103,29 +107,22 @@ zipOnlyLast accents actual =
             []
 
 
-viewBlockWorking : Types.Block -> WorkingStatus -> List (Html.Html Msg)
+viewBlockWorking : Types.Block -> WorkingState -> List (Html.Html Msg)
 viewBlockWorking block ws =
-    --case List.reverse ws.actual of
-    --    (x :: xs) ->
-    --        Html.p [] []
-    --        ::
-    --            List.map (\index -> viewAccent False (toString index)) (List.range 1 (x - 1))
-    --            ++ [viewAccent True (toString x)]
-    --        ++ xs |> List.map (\accent ->
-    --            List.map ())
-    --    _ -> Html.div [] [Html.text "Impossible"]
     zipOnlyLast block.accents ws.actual
         |> List.map
             (\( accent, maybeInt ) ->
                 case maybeInt of
                     Nothing ->
-                        List.map (\index -> viewAccent False (toString index)) (List.range 1 accent)
+                        [ Html.div [ Html.Attributes.class "accents" ] <| List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 accent) ]
                             ++ [ Html.p [] [] ]
 
                     Just x ->
-                        List.map (\index -> viewAccent False (toString index)) (List.range 1 (x - 1))
-                            ++ [ viewAccent True (toString x) ]
-                            ++ List.map (\index -> viewAccent False (toString index)) (List.range (x + 1) accent)
+                        [ Html.div [ Html.Attributes.class "accents" ] <|
+                            List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 (x - 1))
+                                ++ [ viewAccent True (toString x) block.tempo ]
+                                ++ List.map (\index -> viewAccent False (toString index) block.tempo) (List.range (x + 1) accent)
+                        ]
                             ++ [ Html.p [] [] ]
             )
         |> List.concat
@@ -136,12 +133,14 @@ view model =
     case model.status of
         Idle ->
             Html.div
-                []
+                [ Html.Attributes.class "block idle"
+                ]
                 (viewBlockIdle model.block)
 
         Working ws ->
             Html.div
-                []
+                [ Html.Attributes.class "block working"
+                ]
                 (viewBlockWorking model.block ws)
 
 
@@ -150,7 +149,7 @@ block =
     case
         Json.Decode.decodeString Types.decodeBlock """
         {
-          "tempo" : 260,
+          "tempo" : 160,
           "accents": [
             2, 3, 2, 4
           ],
@@ -169,7 +168,6 @@ init : Return.Return Msg Model
 init =
     Model block (Working { maybeCount = Just 5, actual = [ 2, 1 ] })
         |> Return.singleton
-        |> Debug.log "a"
 
 
 subscriptions : Model -> Sub Msg

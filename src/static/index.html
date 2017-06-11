@@ -3,12 +3,13 @@
     <title>Elm</title>
     <script src="index.js" charset="utf-8"></script>
     <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
   </head>
 
   <body>
     <div id="app"></div>
     <script>
-      app = Elm.Metronomes.embed(document.getElementById("app"));
+      app = Elm.Metronome.embed(document.getElementById("app"));
       
       var createAudio = function(name) {
         var myAudio = document.createElement('audio');

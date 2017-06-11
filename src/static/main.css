@@ -1,4 +1,62 @@
-/*
-#app {
-    background-color: #CAF4ED;
+body {
+    background-color:  rgb(240, 240, 240);
+}
+
+.accent {
+    display: inline-block;
+    border-width: 4px ;
+    border-radius: 8px;
+    border-style: solid;
+    box-shadow: rgba(0,0,0,0.1) 0px 1px 2px;
+    border-color: rgb(255,255,255);
+    color: rgb(0,0,0);
+    width: 50px;
+    height: 50px;
+    background-color: White;
+    margin : 5px;
+    text-align: center;
+}
+
+
+@keyframes highlight {
+
+/*    0% {
+        background-color: White;
+    }
+*/  from, 20%, 53%, 80%, to {
+    animation-timing-function: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+    transform: translate3d(0,0,0);
+  }
+
+  40%, 43% {
+    animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+    transform: translate3d(0, -30px, 0);
+
+  }
+  50% {
+
+        background-color: #FE5F55;    
+  }
+  70% {
+    animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+    transform: translate3d(0, -15px, 0);
+
+        /*background-color: #FFB0AA;   */
+  }
+
+  90% {
+    transform: translate3d(0,-4px,0);
+        background-color: rgb(255,255,255);   
+  }
+
+}
+
+.highlight {
+  animation-name: highlight;
+  transform-origin: center bottom;
+  /*animation-duration: 700ms;*/
+  animation-fill-mode: both;
+}
+
+/*@keyframes change_color {
 }*/
