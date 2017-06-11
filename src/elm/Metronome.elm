@@ -68,7 +68,7 @@ stripList list =
 
 wsToViewBlockws : WorkingState -> ViewBlock.WorkingState
 wsToViewBlockws ws =
-    { maybeCount = ws.maybeCount, actual = ws.actual }
+    { maybeCount = ws.maybeCount, actual = ws.actual, stopped = ws.stopped }
 
 
 update : Msg -> Model -> Return Msg Model
@@ -175,6 +175,21 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
+    Html.div
+        []
+        [ (case model.status of
+            Idle ->
+                ViewBlock.view { status = ViewBlock.Idle, block = model.block }
+
+            Working ws ->
+                ViewBlock.view { status = ViewBlock.Working <| wsToViewBlockws ws, block = model.block }
+          )
+            |> Html.map ViewMsg
+        ]
+
+
+viewTest : Model -> Html Msg
+viewTest model =
     div []
         [ text <| Basics.toString model
         , Html.p [] []
@@ -218,17 +233,7 @@ view model =
             ]
             [ Html.text "Reset" ]
         , Html.p [] []
-        , Html.div
-            []
-            [ (case model.status of
-                Idle ->
-                    ViewBlock.view { status = ViewBlock.Idle, block = model.block }
-
-                Working ws ->
-                    ViewBlock.view { status = ViewBlock.Working <| wsToViewBlockws ws, block = model.block }
-              )
-                |> Html.map ViewMsg
-            ]
+        , view model
         ]
 
 
@@ -237,9 +242,9 @@ block =
     case
         Json.Decode.decodeString decodeBlock """
         {
-          "tempo" : 200,
+          "tempo" : 60,
           "accents": [
-            2, 3, 2, 4
+            10, 3, 2, 4
           ],
           "maybeCount" : 5
         }
@@ -284,7 +289,7 @@ port click : String -> Platform.Cmd.Cmd msg
 main =
     Html.program
         { init = init
-        , view = view
+        , view = viewTest
         , update = update
         , subscriptions = subscriptions
         }

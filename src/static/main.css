@@ -2,22 +2,46 @@ body {
     background-color:  rgb(240, 240, 240);
 }
 
+body * {
+
+    font-family: calibri, helvetica, arial, sans-serif;
+}
+
 .accent {
     display: inline-block;
-    border-width: 4px ;
-    border-radius: 8px;
+    border-width: 0px ;
+    border-radius: 5px;
     border-style: solid;
-    box-shadow: rgba(0,0,0,0.1) 0px 1px 2px;
+    box-shadow: rgba(0,0,0,0.2) 0px 1px 2px;
     border-color: rgb(255,255,255);
     color: rgb(0,0,0);
     width: 50px;
     height: 50px;
     background-color: White;
-    margin : 5px;
+    margin : 2px;
     text-align: center;
+    font-size: 26;
+    line-height: 45px;
+}
+.block {
+    width : 437px;
+    border-width: 0px;
+    border-radius: 8px;
+    border-style: solid;
+    box-shadow: rgba(0,0,0,0.2) 0px 2px 3px;
+    border-color: rgb(245,245,245);
+    background-color:  rgb(245,245,245);
+}
+
+.accents:nth-child(even) {
+    background-color:  rgb(230,230,230);   
 }
 
 
+.accents {
+
+    padding: 2px;
+}
 @keyframes highlight {
 
 /*    0% {
@@ -35,7 +59,7 @@ body {
   }
   50% {
 
-        background-color: #FE5F55;    
+        background-color: #FFB0AA;    
   }
   70% {
     animation-timing-function: cubic-bezier(0.755, 0.050, 0.855, 0.060);

@@ -12,6 +12,7 @@ import Time
 type alias WorkingState =
     { maybeCount : Maybe Int
     , actual : List Int
+    , stopped : Bool
     }
 
 
@@ -82,8 +83,7 @@ viewBlockIdle block =
     block.accents
         |> List.map
             (\accent ->
-                [ Html.div [] <| List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 accent) ]
-                    ++ [ Html.p [] [] ]
+                [ Html.div [ Html.Attributes.class "accents" ] <| List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 accent) ]
             )
         |> List.concat
 
@@ -115,15 +115,13 @@ viewBlockWorking block ws =
                 case maybeInt of
                     Nothing ->
                         [ Html.div [ Html.Attributes.class "accents" ] <| List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 accent) ]
-                            ++ [ Html.p [] [] ]
 
                     Just x ->
                         [ Html.div [ Html.Attributes.class "accents" ] <|
                             List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 (x - 1))
-                                ++ [ viewAccent True (toString x) block.tempo ]
+                                ++ [ viewAccent (Basics.not ws.stopped) (toString x) block.tempo ]
                                 ++ List.map (\index -> viewAccent False (toString index) block.tempo) (List.range (x + 1) accent)
                         ]
-                            ++ [ Html.p [] [] ]
             )
         |> List.concat
 
@@ -166,7 +164,7 @@ block =
 
 init : Return.Return Msg Model
 init =
-    Model block (Working { maybeCount = Just 5, actual = [ 2, 1 ] })
+    Model block (Working { maybeCount = Just 5, actual = [ 2, 1 ], stopped = False })
         |> Return.singleton
 
 
