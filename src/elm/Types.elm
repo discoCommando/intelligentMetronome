@@ -60,3 +60,24 @@ encodeSong record =
         , ( "artist", Json.Encode.string <| record.artist )
         , ( "blocks", Json.Encode.list <| List.map encodeBlock <| record.blocks )
         ]
+
+
+zip : List a -> List b -> List ( a, b )
+zip l1 l2 =
+    case ( l1, l2 ) of
+        ( x :: xs, y :: ys ) ->
+            ( x, y ) :: zip xs ys
+
+        _ ->
+            []
+
+
+alreadyPassed : List Int -> List Int -> List Int
+alreadyPassed accents passed =
+    let
+        passedWithZeros =
+            List.repeat (List.length accents - List.length passed) 0 ++ passed
+    in
+        zip accents passedWithZeros
+            |> List.map (Basics.uncurry (-))
+            |> Debug.log "alreadyPassed"

@@ -9,7 +9,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Time
 import Platform.Cmd
-
+import Debug
 
 type alias WorkingState =
     { actual : Metronome.Model
@@ -178,6 +178,35 @@ update msg model =
                                 |> Return.singleton
 
 
+zip : List a -> List b -> List ( a, b )
+zip l1 l2 =
+    case ( l1, l2 ) of
+        ( x :: xs, y :: ys ) ->
+            ( x, y ) :: zip xs ys
+
+        _ ->
+            []
+
+
+alreadyPassed : List Int -> List Int -> List Int
+alreadyPassed accents passed =
+    let
+        passedWithZeros =
+            repeat (length accents - length passsed) 0 ++ passed
+    in
+
+        zip accents passedWithZeros
+            |> List.map (-)
+            |> Debug.log "alreadyPassed"
+
+
+viewBlock : 
+
+viewSong : Types.Song -> Maybe WorkingState -> Html Msg
+viewSong song maybeWs =
+    song.blocks List.map 
+
+
 view : Model -> Html Msg
 view model =
     div []
@@ -231,6 +260,10 @@ view model =
                     Html.Events.onClick Next
             ]
             [ Html.text "Next" ]
+        , Html.p [] []
+        , Html.p [] []
+        , Html.div []
+            []
         ]
 
 
