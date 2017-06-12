@@ -52,6 +52,10 @@ body * {
     top: -30px;
 }
 
+.add-button:hover {
+    background-color: rgba(0,200,0,1);
+}
+
 .remove-button:disabled {
     background-color: rgba(230,0,0,0.1);
     cursor: default;
@@ -59,6 +63,10 @@ body * {
 
 .remove-button:enabled {
     background-color: rgba(230,0,0,0.6);
+}
+
+.remove-button:hover:enabled {
+    background-color: rgba(200,0,0,1);
 }
 
 .block {
@@ -123,6 +131,31 @@ body * {
     width : 50%;
 }
 
+button {
+    -o-transition:.5s;
+    -ms-transition:.5s;
+    -moz-transition:.5s;
+    -webkit-transition:.5s;
+    /* ...and now for the proper property */
+    transition:.5s;
+}
+
+.count-info {
+    cursor: pointer;
+    border: 0;
+    padding: 0;
+    border-top-right-radius: 5px;
+
+
+}
+
+.count-info:hover {
+    color: black;
+}
+
+.cross  {
+    text-decoration: line-through;
+}
 .count * {
     /*margin: 2px;*/
     /*margin-left: 40px;*/
@@ -139,8 +172,11 @@ body * {
     /*margin: 2px;*/
     width: 100%;
     text-align: center;
+    border-top-left-radius: 5px; 
     /*position: relative;*/
 }
+
+
 .count-info  {
     /*margin: 2px;*/
     width: 100%;
@@ -182,10 +218,6 @@ body * {
 .tempo-value  {
     /*width: 50%;*/
 }
-.count-value-working  {
-    /*width: 50%;*/
-    /*width: 50%;*/
-}
 
 .count *, .tempo *{
      /*border-width: 0px;
@@ -204,17 +236,4 @@ body * {
 
 .block-info > div {
     display: inline-block;
-}
-
-.block-info {
-
-    /*height: 100px;*/
-}
-
-#check-infinity {
-    border-radius: 0px;
-    margin : 0px;
-    /*margin-top: -20px;*/
-    /*padding-top: -20px;*/
-    /*display: inline-block;*/
 }

@@ -202,30 +202,20 @@ update msg model =
                                     { m | status = Idle { is | count = s } }
                                 )
 
-                    ViewMsg (ViewBlock.CheckInfinity b) ->
+                    ViewMsg (ViewBlock.ClickCount) ->
                         let
                             block =
                                 model.block
 
-                            updateMaybeCount maybeCount bool =
+                            updateMaybeCount maybeCount =
                                 case maybeCount of
                                     Just c ->
-                                        case b of
-                                            True ->
-                                                Nothing
-
-                                            False ->
-                                                Just c
+                                        Nothing
 
                                     Nothing ->
-                                        case b of
-                                            True ->
-                                                Nothing
-
-                                            False ->
-                                                Just 1
+                                        Just 1
                         in
-                            { model | block = { block | maybeCount = updateMaybeCount block.maybeCount b } }
+                            { model | block = { block | maybeCount = updateMaybeCount block.maybeCount } }
                                 |> Return.singleton
 
                     ViewMsg (ViewBlock.ChangeTempo s) ->
@@ -329,9 +319,7 @@ view model =
 viewTest : Model -> Html Msg
 viewTest model =
     div []
-        [ text <| Basics.toString model
-        , Html.p [] []
-        , Html.button
+        [ Html.button
             [ case model.status of
                 Idle is ->
                     Html.Events.onClick Start

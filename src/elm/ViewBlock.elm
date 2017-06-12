@@ -42,7 +42,7 @@ type Msg
     = Add Int
     | Remove Int
     | ChangeTempo String
-    | CheckInfinity Bool
+    | ClickCount
     | ChangeCount String
       -- external messages
     | Tick WorkingState
@@ -143,15 +143,30 @@ viewBlockIdle block is =
                 ]
             ]
         , div [ class "count" ]
-            [ div [ class "count-info" ] [ text "COUNT" ]
+            [ button
+                [ classList
+                    [ ( "count-info", True )
+                    ]
+                , onClick ClickCount
+                ]
+                [ text "COUNT" ]
             , div [ class "count-value" ]
                 [ input
                     [ type_ "text"
-                    , value <| is.count
+                    , value <|
+                        if (isJust block.maybeCount) then
+                            is.count
+                        else
+                            "∞"
                     , disabled <| Basics.not <| isJust block.maybeCount
                     , onInput ChangeCount
                     ]
-                    [ text <| is.count ]
+                    [ text <|
+                        if (isJust block.maybeCount) then
+                            is.count
+                        else
+                            "∞"
+                    ]
                 ]
             ]
         ]
@@ -220,7 +235,7 @@ viewBlockWorking block ws =
                 [ div
                     []
                     [ text <|
-                        maybeMapWithDefault ws.maybeCount Basics.toString ""
+                        maybeMapWithDefault ws.maybeCount Basics.toString "∞"
                     ]
                 ]
             ]
