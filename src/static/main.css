@@ -141,15 +141,16 @@ button {
 }
 
 .count-info {
-    cursor: pointer;
     border: 0;
     padding: 0;
     border-top-right-radius: 5px;
-
-
 }
 
-.count-info:hover {
+.count-info:enabled {
+    cursor: pointer;
+}
+
+.count-info:hover:enabled {
     color: black;
 }
 

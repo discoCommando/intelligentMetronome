@@ -5,42 +5,19 @@
     <link rel="stylesheet" href="main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
     <link href="https://fonts.googleapis.com/css?family=Roboto+Condensed" rel="stylesheet">
+    <script src="https://code.createjs.com/soundjs-0.6.2.min.js"></script>
   </head>
 
   <body>
     <div id="app"></div>
     <script>
+      createjs.Sound.registerSound('audio/lowest.mp3', "Low");
+      createjs.Sound.registerSound('audio/low.mp3', "High");
+
       app = Elm.Metronome.embed(document.getElementById("app"));
       
-      var createAudio = function(name) {
-        var myAudio = document.createElement('audio');
-        if (myAudio.canPlayType('audio/mp3')) {
-          myAudio.setAttribute('src','audio/'+name+'.mp3');
-        }
-        return myAudio;
-      }
-      var audioObject = {
-        Low: { 
-          audios : [
-            createAudio("lowest"),
-            createAudio("lowest"),
-            createAudio("lowest")
-          ],
-          counter: 0
-        },
-        High: { 
-          audios : [
-            createAudio("low"),
-            createAudio("low"),
-            createAudio("low")
-          ],
-          counter: 0
-        },
-      };
       app.ports.click.subscribe(function(name) {
-        var o = audioObject[name];
-        o.audios[o.counter].play();
-        o.counter = o.counter == 2 ? 0 : o.counter + 1;
+        createjs.Sound.play(name);
       });
     </script>
   </body>
