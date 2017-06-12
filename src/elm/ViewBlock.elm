@@ -16,8 +16,18 @@ type alias WorkingState =
     }
 
 
+
+-- values that may be not correct
+
+
+type alias IdleState =
+    { tempo : String
+    , count : String
+    }
+
+
 type Status
-    = Idle
+    = Idle IdleState
     | Working WorkingState
 
 
@@ -41,7 +51,7 @@ type Msg
 update : Msg -> Model -> Return.Return Msg Model
 update msg model =
     case model.status of
-        Idle ->
+        Idle is ->
             case msg of
                 New block ->
                     { model | block = block }
@@ -112,33 +122,33 @@ isJust a =
             True
 
 
-toInt : Maybe Int -> Int
-toInt m =
-    case m of
-        Maybe.Nothing ->
-            1
+maybeMapWithDefault : Maybe a -> (a -> b) -> b -> b
+maybeMapWithDefault maybe f default =
+    case maybe of
+        Just a ->
+            f a
 
-        Maybe.Just a ->
-            a
+        Nothing ->
+            default
 
 
-viewBlockIdle : Types.Block -> List (Html Msg)
-viewBlockIdle block =
+viewBlockIdle : Types.Block -> IdleState -> List (Html Msg)
+viewBlockIdle block is =
     [ div [ class "block-info" ]
-        [ div []
+        [ div [ class "tempo" ]
             [ text "Tempo: "
-            , input [ type_ "number", value <| Basics.toString block.tempo, onInput ChangeTempo ] [ text <| Basics.toString block.tempo ]
+            , input [ type_ "number", value <| is.tempo, onInput ChangeTempo ] [ text <| is.tempo ]
             ]
         , div []
-            [ div []
+            [ div [ class "count" ]
                 [ text "Count: "
                 , input
                     [ type_ "number"
-                    , value <| Basics.toString <| toInt block.maybeCount
+                    , value <| is.count
                     , disabled <| Basics.not <| isJust block.maybeCount
                     , onInput ChangeCount
                     ]
-                    [ text <| Basics.toString block.tempo ]
+                    [ text <| is.count ]
                 , input
                     [ type_ "checkbox"
                     , checked (Basics.not <| isJust block.maybeCount)
@@ -190,7 +200,34 @@ zipOnlyLast accents actual =
 viewBlockWorking : Types.Block -> WorkingState -> List (Html Msg)
 viewBlockWorking block ws =
     [ div [ class "block-info" ]
-        [ div [] [ text "Tempo: ", input [ type_ "text", disabled True, value <| Basics.toString block.tempo ] [ text <| Basics.toString block.tempo ] ]
+        [ div [ class "tempo" ]
+            [ text "Tempo: "
+            , input
+                [ type_ "text"
+                , disabled True
+                , value <| Basics.toString block.tempo
+                ]
+                [ text <| Basics.toString block.tempo ]
+            ]
+        , div []
+            [ div [ class "count" ]
+                [ text "Count: "
+                , input
+                    [ type_ "number"
+                    , value <| maybeMapWithDefault ws.maybeCount Basics.toString ""
+                    , disabled True
+                    ]
+                    [ text <| maybeMapWithDefault ws.maybeCount Basics.toString ""
+                    ]
+                , input
+                    [ type_ "checkbox"
+                    , checked (Basics.not <| isJust ws.maybeCount)
+                    , disabled True
+                    ]
+                    []
+                , text "Infinite"
+                ]
+            ]
         ]
     ]
         ++ (zipOnlyLast block.accents ws.actual
@@ -214,11 +251,11 @@ viewBlockWorking block ws =
 view : Model -> Html Msg
 view model =
     case model.status of
-        Idle ->
+        Idle is ->
             div
                 [ class "block idle"
                 ]
-                (viewBlockIdle model.block)
+                (viewBlockIdle model.block is)
 
         Working ws ->
             div

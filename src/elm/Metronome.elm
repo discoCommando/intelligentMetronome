@@ -24,7 +24,7 @@ type alias WorkingState =
 type Status
     = Working WorkingState
       -- List Int is a list of current accents to do, Int is a count left
-    | Idle
+    | Idle ViewBlock.IdleState
 
 
 type alias Model =
@@ -77,6 +77,11 @@ wsToViewBlockws ws =
     { maybeCount = ws.maybeCount, actual = ws.actual, stopped = ws.stopped }
 
 
+blockToIdleState : Types.Block -> ViewBlock.IdleState
+blockToIdleState block =
+    { tempo = Basics.toString block.tempo, count = Maybe.withDefault 0 block.maybeCount |> Basics.toString }
+
+
 update : Msg -> Model -> Return Msg Model
 update msg model =
     let
@@ -104,7 +109,7 @@ update msg model =
                 addToLast actual
     in
         case model.status of
-            Idle ->
+            Idle is ->
                 case msg of
                     Start ->
                         let
@@ -166,26 +171,35 @@ update msg model =
                                 |> Return.singleton
 
                     ViewMsg (ViewBlock.ChangeCount s) ->
-                        case String.toInt s of
+                        (case String.toInt s of
                             Result.Ok i ->
-                                let
-                                    block =
-                                        model.block
+                                if (i > 0) then
+                                    let
+                                        block =
+                                            model.block
 
-                                    updateMaybeCount maybeCount i =
-                                        case maybeCount of
-                                            Just c ->
-                                                Just i
+                                        updateMaybeCount maybeCount i =
+                                            case maybeCount of
+                                                Just c ->
+                                                    Just i
 
-                                            Nothing ->
-                                                Nothing
-                                in
-                                    { model | block = { block | maybeCount = updateMaybeCount block.maybeCount i } }
+                                                Nothing ->
+                                                    Nothing
+                                    in
+                                        { model | block = { block | maybeCount = updateMaybeCount block.maybeCount i } }
+                                            |> Return.singleton
+                                else
+                                    model
                                         |> Return.singleton
 
                             _ ->
                                 model
                                     |> Return.singleton
+                        )
+                            |> Return.map
+                                (\m ->
+                                    { m | status = Idle { is | count = s } }
+                                )
 
                     ViewMsg (ViewBlock.CheckInfinity b) ->
                         let
@@ -214,18 +228,25 @@ update msg model =
                                 |> Return.singleton
 
                     ViewMsg (ViewBlock.ChangeTempo s) ->
-                        case String.toInt s of
+                        (case String.toInt s of
                             Result.Ok i ->
-                                let
-                                    block =
-                                        model.block
-                                in
-                                    { model | block = { block | tempo = i } }
+                                if (i > 0) then
+                                    let
+                                        block =
+                                            model.block
+                                    in
+                                        { model | block = { block | tempo = i } }
+                                            |> Return.singleton
+                                else
+                                    model
                                         |> Return.singleton
 
                             _ ->
                                 model
                                     |> Return.singleton
+                        )
+                            |> Return.map
+                                (\m -> { m | status = Idle { is | tempo = s } })
 
                     _ ->
                         model
@@ -239,7 +260,7 @@ update msg model =
                                 case ws.maybeCount of
                                     Just count ->
                                         if (count <= 0) then
-                                            { model | status = Idle }
+                                            { model | status = Idle <| blockToIdleState model.block }
                                                 |> Return.singleton
                                         else
                                             case stripList ws.accents of
@@ -281,7 +302,7 @@ update msg model =
                                     |> Return.command (click <| toString <| High)
 
                             Reset ->
-                                { model | status = Idle }
+                                { model | status = Idle <| blockToIdleState model.block }
                                     |> Return.singleton
 
                             _ ->
@@ -294,8 +315,8 @@ view model =
     Html.div
         []
         [ (case model.status of
-            Idle ->
-                ViewBlock.view { status = ViewBlock.Idle, block = model.block }
+            Idle is ->
+                ViewBlock.view { status = ViewBlock.Idle is, block = model.block }
 
             Working ws ->
                 ViewBlock.view { status = ViewBlock.Working <| wsToViewBlockws ws, block = model.block }
@@ -311,7 +332,7 @@ viewTest model =
         , Html.p [] []
         , Html.button
             [ case model.status of
-                Idle ->
+                Idle is ->
                     Html.Events.onClick Start
 
                 Working ws ->
@@ -323,7 +344,7 @@ viewTest model =
                             Html.Events.onClick Stop
             ]
             [ case model.status of
-                Idle ->
+                Idle is ->
                     Html.text "Start"
 
                 Working ws ->
@@ -336,7 +357,7 @@ viewTest model =
             ]
         , Html.button
             [ case model.status of
-                Idle ->
+                Idle is ->
                     Html.Attributes.disabled True
 
                 Working ws ->
@@ -375,7 +396,7 @@ block =
 
 init : Return Msg Model
 init =
-    Model block Idle
+    Model block (Idle <| blockToIdleState block)
         |> Return.singleton
 
 
