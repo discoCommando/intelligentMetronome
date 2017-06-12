@@ -18,6 +18,7 @@ type alias WorkingState =
     , maybeCount : Maybe Int
     , stopped : Bool
     , actual : List Int
+    , highlightCount : Bool
     }
 
 
@@ -74,7 +75,7 @@ stripList list =
 
 wsToViewBlockws : WorkingState -> ViewBlock.WorkingState
 wsToViewBlockws ws =
-    { maybeCount = ws.maybeCount, actual = ws.actual, stopped = ws.stopped }
+    { maybeCount = ws.maybeCount, actual = ws.actual, stopped = ws.stopped, highlightCount = ws.highlightCount }
 
 
 blockToIdleState : Types.Block -> ViewBlock.IdleState
@@ -114,7 +115,7 @@ update msg model =
                     Start ->
                         let
                             ws =
-                                { accents = model.block.accents, maybeCount = model.block.maybeCount, stopped = False, actual = [ 1 ] }
+                                { accents = model.block.accents, maybeCount = model.block.maybeCount, stopped = False, actual = [ 1 ], highlightCount = False }
                         in
                             { model
                                 | status = Working ws
@@ -265,12 +266,12 @@ update msg model =
                                         else
                                             case stripList ws.accents of
                                                 ( beep, Maybe.Nothing ) ->
-                                                    { model | status = Working { ws | accents = model.block.accents, maybeCount = Just <| count - 1, actual = [ 1 ] } }
+                                                    { model | status = Working { ws | accents = model.block.accents, maybeCount = Just <| count - 1, actual = [ 1 ], highlightCount = True } }
                                                         |> Return.singleton
                                                         |> Return.command (click <| toString <| beepToClick beep)
 
                                                 ( beep, Maybe.Just newAccents ) ->
-                                                    { model | status = Working { ws | accents = newAccents, actual = updateActual beep ws.actual } }
+                                                    { model | status = Working { ws | accents = newAccents, actual = updateActual beep ws.actual, highlightCount = False } }
                                                         |> Return.singleton
                                                         |> Return.command (click <| toString <| beepToClick beep)
 
@@ -383,7 +384,7 @@ block =
           "accents": [
             4
           ],
-          "maybeCount" : null
+          "maybeCount" : 5
         }
 """
     of

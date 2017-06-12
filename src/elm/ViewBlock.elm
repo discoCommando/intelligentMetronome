@@ -13,6 +13,7 @@ type alias WorkingState =
     { maybeCount : Maybe Int
     , actual : List Int
     , stopped : Bool
+    , highlightCount : Bool
     }
 
 
@@ -136,26 +137,21 @@ viewBlockIdle : Types.Block -> IdleState -> List (Html Msg)
 viewBlockIdle block is =
     [ div [ class "block-info" ]
         [ div [ class "tempo" ]
-            [ text "Tempo: "
-            , input [ type_ "number", value <| is.tempo, onInput ChangeTempo ] [ text <| is.tempo ]
+            [ div [ class "tempo-info" ] [ text "TEMPO" ]
+            , div [ class "tempo-value" ]
+                [ input [ type_ "text", value <| is.tempo, onInput ChangeTempo ] [ text <| is.tempo ]
+                ]
             ]
-        , div []
-            [ div [ class "count" ]
-                [ text "Count: "
-                , input
-                    [ type_ "number"
+        , div [ class "count" ]
+            [ div [ class "count-info" ] [ text "COUNT" ]
+            , div [ class "count-value" ]
+                [ input
+                    [ type_ "text"
                     , value <| is.count
                     , disabled <| Basics.not <| isJust block.maybeCount
                     , onInput ChangeCount
                     ]
                     [ text <| is.count ]
-                , input
-                    [ type_ "checkbox"
-                    , checked (Basics.not <| isJust block.maybeCount)
-                    , onCheck CheckInfinity
-                    ]
-                    []
-                , text "Infinite"
                 ]
             ]
         ]
@@ -201,31 +197,31 @@ viewBlockWorking : Types.Block -> WorkingState -> List (Html Msg)
 viewBlockWorking block ws =
     [ div [ class "block-info" ]
         [ div [ class "tempo" ]
-            [ text "Tempo: "
-            , input
-                [ type_ "text"
-                , disabled True
-                , value <| Basics.toString block.tempo
-                ]
-                [ text <| Basics.toString block.tempo ]
-            ]
-        , div []
-            [ div [ class "count" ]
-                [ text "Count: "
-                , input
-                    [ type_ "number"
-                    , value <| maybeMapWithDefault ws.maybeCount Basics.toString ""
-                    , disabled True
-                    ]
-                    [ text <| maybeMapWithDefault ws.maybeCount Basics.toString ""
-                    ]
-                , input
-                    [ type_ "checkbox"
-                    , checked (Basics.not <| isJust ws.maybeCount)
-                    , disabled True
-                    ]
+            [ div [ class "tempo-info" ] [ text "TEMPO" ]
+            , div [ class "tempo-value" ]
+                [ div
                     []
-                , text "Infinite"
+                    [ text <| Basics.toString block.tempo ]
+                ]
+            ]
+        , div [ class "count" ]
+            [ div [ class "count-info" ] [ text "COUNT" ]
+            , div
+                [ classList
+                    [ ( "count-value", True )
+                    , ( "animate bounce", ws.highlightCount )
+                    ]
+                , style
+                    [ ( "animation-duration"
+                      , (Basics.toString <| Basics.floor ((60000 * Time.millisecond) / Basics.toFloat block.tempo)) ++ "ms"
+                      )
+                    ]
+                ]
+                [ div
+                    []
+                    [ text <|
+                        maybeMapWithDefault ws.maybeCount Basics.toString ""
+                    ]
                 ]
             ]
         ]
@@ -286,7 +282,7 @@ block =
 
 init : Return.Return Msg Model
 init =
-    Model block (Working { maybeCount = Just 5, actual = [ 2, 1 ], stopped = False })
+    Model block (Working { maybeCount = Just 5, actual = [ 2, 1 ], stopped = False, highlightCount = True })
         |> Return.singleton
 
 
