@@ -29,7 +29,7 @@ type alias IdleState =
 type Status
     = Idle IdleState
     | Working WorkingState
-    | Stopped IdleState WorkingState
+    | Paused IdleState WorkingState
 
 
 type alias Model =
@@ -272,8 +272,8 @@ viewBlockWorking block ws =
            )
 
 
-viewBlockStopped : Types.Block -> IdleState -> WorkingState -> List (Html Msg)
-viewBlockStopped block is ws =
+viewBlockPaused : Types.Block -> IdleState -> WorkingState -> List (Html Msg)
+viewBlockPaused block is ws =
     [ div [ class "block-info" ]
         [ div [ class "tempo" ]
             [ div [ class "tempo-info" ] [ text "TEMPO" ]
@@ -336,9 +336,9 @@ view model =
                 ]
                 (viewBlockWorking model.block ws)
 
-        Stopped is ws ->
-            div [ class "block stopped" ]
-                (viewBlockStopped model.block is ws)
+        Paused is ws ->
+            div [ class "block paused" ]
+                (viewBlockPaused model.block is ws)
 
 
 block : Types.Block

@@ -29,9 +29,8 @@ type alias WorkingState =
 
 type Status
     = Working WorkingState
-      -- List Int is a list of current accents to do, Int is a count left
     | Idle ViewBlock.IdleState
-    | Stopped ViewBlock.IdleState WorkingState
+    | Paused ViewBlock.IdleState WorkingState
 
 
 type alias Model =
@@ -43,15 +42,9 @@ type alias Model =
 type Msg
     = Tick
     | Start
+    | Pause
     | Stop
-    | Reset
     | ViewMsg ViewBlock.Msg
-
-
-
---| Add Int
---| Remove Int
--- bool is if to tick
 
 
 stripList : List Int -> ( Bool, Maybe (List Int) )
@@ -242,8 +235,6 @@ update msg model =
                             |> Return.singleton
 
             Working ws ->
-                --case ws.stopped of
-                --    False ->
                 case msg of
                     Tick ->
                         case ws.maybeCount of
@@ -275,22 +266,26 @@ update msg model =
                                             |> Return.singleton
                                             |> Return.command (click <| toString <| beepToClick beep)
 
+                    Pause ->
+                        { model | status = Paused (blockToIdleState model.block) ws }
+                            |> Return.singleton
+
                     Stop ->
-                        { model | status = Stopped (blockToIdleState model.block) ws }
+                        { model | status = Idle (blockToIdleState model.block) }
                             |> Return.singleton
 
                     _ ->
                         model
                             |> Return.singleton
 
-            Stopped is ws ->
+            Paused is ws ->
                 case msg of
                     Start ->
                         { model | status = Working ws }
                             |> Return.singleton
                             |> Return.command (click <| toString <| ws.lastClick)
 
-                    Reset ->
+                    Stop ->
                         { model | status = Idle is }
                             |> Return.singleton
 
@@ -310,7 +305,7 @@ update msg model =
                                                 Nothing ->
                                                     Nothing
                                     in
-                                        { model | status = Stopped is { ws | maybeCount = updateMaybeCount ws.maybeCount i } }
+                                        { model | status = Paused is { ws | maybeCount = updateMaybeCount ws.maybeCount i } }
                                             |> Return.singleton
                                 else
                                     model
@@ -322,7 +317,7 @@ update msg model =
                         )
                             |> Return.map
                                 (\m ->
-                                    { m | status = Stopped { is | count = s } ws }
+                                    { m | status = Paused { is | count = s } ws }
                                 )
 
                     ViewMsg (ViewBlock.ClickCount) ->
@@ -360,7 +355,7 @@ update msg model =
                                     |> Return.singleton
                         )
                             |> Return.map
-                                (\m -> { m | status = Stopped { is | tempo = s } ws })
+                                (\m -> { m | status = Paused { is | tempo = s } ws })
 
                     _ ->
                         model
@@ -378,8 +373,8 @@ view model =
             Working ws ->
                 ViewBlock.view { status = ViewBlock.Working <| wsToViewBlockws ws, block = model.block }
 
-            Stopped is ws ->
-                ViewBlock.view { status = ViewBlock.Stopped is <| wsToViewBlockws ws, block = model.block }
+            Paused is ws ->
+                ViewBlock.view { status = ViewBlock.Paused is <| wsToViewBlockws ws, block = model.block }
           )
             |> Html.map ViewMsg
         ]
@@ -396,9 +391,9 @@ viewTest model =
                     Html.Events.onClick Start
 
                 Working ws ->
-                    Html.Events.onClick Stop
+                    Html.Events.onClick Pause
 
-                Stopped is ws ->
+                Paused is ws ->
                     Html.Events.onClick Start
             ]
             [ case model.status of
@@ -406,9 +401,9 @@ viewTest model =
                     Html.text "Start"
 
                 Working ws ->
-                    Html.text "Stop"
+                    Html.text "Pause"
 
-                Stopped is ws ->
+                Paused is ws ->
                     Html.text "Resume"
             ]
         , Html.button
@@ -417,12 +412,12 @@ viewTest model =
                     Html.Attributes.disabled True
 
                 Working ws ->
-                    Html.Attributes.disabled True
+                    Html.Events.onClick Stop
 
-                Stopped is ws ->
-                    Html.Events.onClick Reset
+                Paused is ws ->
+                    Html.Events.onClick Stop
             ]
-            [ Html.text "Reset" ]
+            [ Html.text "Stop" ]
         , Html.p [] []
         , view model
         ]
@@ -432,13 +427,13 @@ block : Block
 block =
     case
         Json.Decode.decodeString decodeBlock """
-        {
-          "tempo" : 240,
-          "accents": [
-            4
-          ],
-          "maybeCount" : 5
-        }
+    {
+      "tempo" : 240,
+      "accents": [
+      4
+      ],
+      "maybeCount" : 5
+    }
 """
     of
         Result.Ok a ->
