@@ -14,7 +14,7 @@
       createjs.Sound.registerSound('audio/lowest.mp3', "Low");
       createjs.Sound.registerSound('audio/low.mp3', "High");
 
-      app = Elm.Metronome.embed(document.getElementById("app"));
+      app = Elm.Metronomes.embed(document.getElementById("app"));
       
       app.ports.click.subscribe(function(name) {
         createjs.Sound.play(name);

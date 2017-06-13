@@ -30,6 +30,7 @@ type Status
     = Idle IdleState
     | Working WorkingState
     | Paused IdleState WorkingState
+    | Finished IdleState
 
 
 type alias Model =
@@ -321,6 +322,49 @@ viewBlockPaused block is ws =
            )
 
 
+viewBlockFinished : Types.Block -> IdleState -> List (Html Msg)
+viewBlockFinished block is =
+    [ div [ class "block-info" ]
+        [ div [ class "tempo" ]
+            [ div [ class "tempo-info" ] [ text "TEMPO" ]
+            , div [ class "tempo-value" ]
+                [ input [ type_ "text", value <| is.tempo, onInput ChangeTempo ] [ text <| is.tempo ]
+                ]
+            ]
+        , div [ class "count" ]
+            [ div [ class "count-info" ] [ text "COUNT" ]
+            , div
+                [ classList
+                    [ ( "count-value", True )
+                    ]
+                , style
+                    [ ( "animation-duration"
+                      , (Basics.toString <| Basics.floor ((60000 * Time.millisecond) / Basics.toFloat block.tempo)) ++ "ms"
+                      )
+                    ]
+                ]
+                [ div
+                    []
+                    [ text <|
+                        maybeMapWithDefault block.maybeCount Basics.toString "∞"
+                    ]
+                ]
+            ]
+        ]
+    ]
+        ++ (block.accents
+                |> List.indexedMap
+                    (\i accent ->
+                        [ div [ class "accents" ] <|
+                            List.map
+                                (\index -> viewAccent NoAnimation (toString index) block.tempo)
+                                (List.range 1 accent)
+                        ]
+                    )
+                |> List.concat
+           )
+
+
 view : Model -> Html Msg
 view model =
     case model.status of
@@ -339,6 +383,10 @@ view model =
         Paused is ws ->
             div [ class "block paused" ]
                 (viewBlockPaused model.block is ws)
+
+        Finished is ->
+            div [ class "block finished" ]
+                (viewBlockFinished model.block is)
 
 
 block : Types.Block
