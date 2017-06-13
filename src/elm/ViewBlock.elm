@@ -279,7 +279,9 @@ viewBlockPaused block is ws =
         [ div [ class "tempo" ]
             [ div [ class "tempo-info" ] [ text "TEMPO" ]
             , div [ class "tempo-value" ]
-                [ input [ type_ "text", value <| is.tempo, onInput ChangeTempo ] [ text <| is.tempo ]
+                [ div
+                    []
+                    [ text <| Basics.toString block.tempo ]
                 ]
             ]
         , div [ class "count" ]
@@ -328,7 +330,9 @@ viewBlockFinished block is =
         [ div [ class "tempo" ]
             [ div [ class "tempo-info" ] [ text "TEMPO" ]
             , div [ class "tempo-value" ]
-                [ input [ type_ "text", value <| is.tempo, onInput ChangeTempo ] [ text <| is.tempo ]
+                [ div
+                    []
+                    [ text <| Basics.toString block.tempo ]
                 ]
             ]
         , div [ class "count" ]
