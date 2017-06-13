@@ -20,22 +20,23 @@ type alias WorkingState =
 -- values that may be not correct
 
 
-type alias IdleState =
+type alias Temps =
     { tempo : String
     , count : String
     }
 
 
 type Status
-    = Idle IdleState
+    = Idle
     | Working WorkingState
-    | Paused IdleState WorkingState
-    | Finished IdleState
+    | Paused WorkingState
+    | Finished
 
 
 type alias Model =
     { block : Types.Block
     , status : Status
+    , temps : Temps
     }
 
 
@@ -53,7 +54,7 @@ type Msg
 update : Msg -> Model -> Return.Return Msg Model
 update msg model =
     case model.status of
-        Idle is ->
+        Idle ->
             case msg of
                 New block ->
                     { model | block = block }
@@ -147,13 +148,13 @@ maybeMapWithDefault maybe f default =
             default
 
 
-viewBlockIdle : Types.Block -> IdleState -> List (Html Msg)
-viewBlockIdle block is =
+viewBlockIdle : Types.Block -> Temps -> List (Html Msg)
+viewBlockIdle block temps =
     [ div [ class "block-info" ]
         [ div [ class "tempo" ]
             [ div [ class "tempo-info" ] [ text "TEMPO" ]
             , div [ class "tempo-value" ]
-                [ input [ type_ "text", value <| is.tempo, onInput ChangeTempo ] [ text <| is.tempo ]
+                [ input [ type_ "text", value <| temps.tempo, onInput ChangeTempo ] [ text <| temps.tempo ]
                 ]
             ]
         , div [ class "count" ]
@@ -169,7 +170,7 @@ viewBlockIdle block is =
                     [ type_ "text"
                     , value <|
                         if (isJust block.maybeCount) then
-                            is.count
+                            temps.count
                         else
                             "∞"
                     , disabled <| Basics.not <| isJust block.maybeCount
@@ -177,7 +178,7 @@ viewBlockIdle block is =
                     ]
                     [ text <|
                         if (isJust block.maybeCount) then
-                            is.count
+                            temps.count
                         else
                             "∞"
                     ]
@@ -273,8 +274,8 @@ viewBlockWorking block ws =
            )
 
 
-viewBlockPaused : Types.Block -> IdleState -> WorkingState -> List (Html Msg)
-viewBlockPaused block is ws =
+viewBlockPaused : Types.Block -> WorkingState -> List (Html Msg)
+viewBlockPaused block ws =
     [ div [ class "block-info" ]
         [ div [ class "tempo" ]
             [ div [ class "tempo-info" ] [ text "TEMPO" ]
@@ -324,8 +325,8 @@ viewBlockPaused block is ws =
            )
 
 
-viewBlockFinished : Types.Block -> IdleState -> List (Html Msg)
-viewBlockFinished block is =
+viewBlockFinished : Types.Block -> List (Html Msg)
+viewBlockFinished block =
     [ div [ class "block-info" ]
         [ div [ class "tempo" ]
             [ div [ class "tempo-info" ] [ text "TEMPO" ]
@@ -372,11 +373,11 @@ viewBlockFinished block is =
 view : Model -> Html Msg
 view model =
     case model.status of
-        Idle is ->
+        Idle ->
             div
                 [ class "block idle"
                 ]
-                (viewBlockIdle model.block is)
+                (viewBlockIdle model.block model.temps)
 
         Working ws ->
             div
@@ -384,13 +385,13 @@ view model =
                 ]
                 (viewBlockWorking model.block ws)
 
-        Paused is ws ->
+        Paused ws ->
             div [ class "block paused" ]
-                (viewBlockPaused model.block is ws)
+                (viewBlockPaused model.block ws)
 
-        Finished is ->
+        Finished ->
             div [ class "block finished" ]
-                (viewBlockFinished model.block is)
+                (viewBlockFinished model.block)
 
 
 block : Types.Block
@@ -415,7 +416,7 @@ block =
 
 init : Return.Return Msg Model
 init =
-    Model block (Working { maybeCount = Just 5, actual = [ 2, 1 ], highlightCount = True })
+    Model block (Working { maybeCount = Just 5, actual = [ 2, 1 ], highlightCount = True }) { tempo = "160", count = "5" }
         |> Return.singleton
 
 

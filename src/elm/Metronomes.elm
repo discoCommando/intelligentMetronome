@@ -34,7 +34,19 @@ type alias Model =
 
 mapBlock : Types.Block -> Metronome.Model
 mapBlock block =
-    { block = block, status = Metronome.Idle <| Metronome.blockToIdleState block }
+    { block = block
+    , status = Metronome.Idle
+    , temps =
+        { tempo = Basics.toString block.tempo
+        , count =
+            case block.maybeCount of
+                Just a ->
+                    Basics.toString a
+
+                Nothing ->
+                    "1"
+        }
+    }
 
 
 songToModel : Types.Song -> Model
@@ -223,7 +235,7 @@ update msg model =
                                     Metronome.update msg ws.actual
                             in
                                 case changedMetronomeModel.status of
-                                    Metronome.Finished is ->
+                                    Metronome.Finished ->
                                         case ws.next of
                                             [] ->
                                                 { model | status = Idle }
