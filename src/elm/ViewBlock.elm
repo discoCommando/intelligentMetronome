@@ -115,7 +115,7 @@ viewAccent animation label tempo =
                     ]
 
                 Glow ->
-                    [ class "glow" ]
+                    [ class "accent glow" ]
 
                 NoAnimation ->
                     [ class "accent"
