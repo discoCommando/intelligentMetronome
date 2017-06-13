@@ -94,12 +94,18 @@ viewAddRemoveButtons minusDisabled id =
         ]
 
 
-viewAccent : Bool -> String -> Int -> Html Msg
-viewAccent highlight label tempo =
+type AnimationType
+    = Highlight
+    | Glow
+    | NoAnimation
+
+
+viewAccent : AnimationType -> String -> Int -> Html Msg
+viewAccent animation label tempo =
     let
         attributes =
-            case highlight of
-                True ->
+            case animation of
+                Highlight ->
                     [ class "accent highlight"
                     , style
                         [ ( "animation-duration"
@@ -108,7 +114,10 @@ viewAccent highlight label tempo =
                         ]
                     ]
 
-                False ->
+                Glow ->
+                    [ class "glow" ]
+
+                NoAnimation ->
                     [ class "accent"
                     ]
     in
@@ -180,7 +189,7 @@ viewBlockIdle block is =
                     (\i accent ->
                         [ div [ class "accents" ] <|
                             List.map
-                                (\index -> viewAccent False (toString index) block.tempo)
+                                (\index -> viewAccent NoAnimation (toString index) block.tempo)
                                 (List.range 1 accent)
                                 ++ [ viewAddRemoveButtons False i ]
                         ]
@@ -250,13 +259,13 @@ viewBlockWorking block ws =
                     (\( accent, maybeInt ) ->
                         case maybeInt of
                             Nothing ->
-                                [ div [ class "accents" ] <| List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 accent) ]
+                                [ div [ class "accents" ] <| List.map (\index -> viewAccent NoAnimation (toString index) block.tempo) (List.range 1 accent) ]
 
                             Just x ->
                                 [ div [ class "accents" ] <|
-                                    List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 (x - 1))
-                                        ++ [ viewAccent True (toString x) block.tempo ]
-                                        ++ List.map (\index -> viewAccent False (toString index) block.tempo) (List.range (x + 1) accent)
+                                    List.map (\index -> viewAccent NoAnimation (toString index) block.tempo) (List.range 1 (x - 1))
+                                        ++ [ viewAccent Highlight (toString x) block.tempo ]
+                                        ++ List.map (\index -> viewAccent NoAnimation (toString index) block.tempo) (List.range (x + 1) accent)
                                 ]
                     )
                 |> List.concat
@@ -294,14 +303,19 @@ viewBlockStopped block is ws =
             ]
         ]
     ]
-        ++ (block.accents
-                |> List.indexedMap
-                    (\i accent ->
-                        [ div [ class "accents" ] <|
-                            List.map
-                                (\index -> viewAccent False (toString index) block.tempo)
-                                (List.range 1 accent)
-                        ]
+        ++ (zipOnlyLast block.accents ws.actual
+                |> List.map
+                    (\( accent, maybeInt ) ->
+                        case maybeInt of
+                            Nothing ->
+                                [ div [ class "accents" ] <| List.map (\index -> viewAccent NoAnimation (toString index) block.tempo) (List.range 1 accent) ]
+
+                            Just x ->
+                                [ div [ class "accents" ] <|
+                                    List.map (\index -> viewAccent NoAnimation (toString index) block.tempo) (List.range 1 (x - 1))
+                                        ++ [ viewAccent Glow (toString x) block.tempo ]
+                                        ++ List.map (\index -> viewAccent NoAnimation (toString index) block.tempo) (List.range (x + 1) accent)
+                                ]
                     )
                 |> List.concat
            )
