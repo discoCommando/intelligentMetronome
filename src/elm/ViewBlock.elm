@@ -12,7 +12,6 @@ import Time
 type alias WorkingState =
     { maybeCount : Maybe Int
     , actual : List Int
-    , stopped : Bool
     , highlightCount : Bool
     }
 
@@ -30,6 +29,7 @@ type alias IdleState =
 type Status
     = Idle IdleState
     | Working WorkingState
+    | Stopped IdleState WorkingState
 
 
 type alias Model =
@@ -71,6 +71,10 @@ update msg model =
                 _ ->
                     model
                         |> Return.singleton
+
+        _ ->
+            model
+                |> Return.singleton
 
 
 viewAddRemoveButtons : Bool -> Int -> Html Msg
@@ -251,9 +255,53 @@ viewBlockWorking block ws =
                             Just x ->
                                 [ div [ class "accents" ] <|
                                     List.map (\index -> viewAccent False (toString index) block.tempo) (List.range 1 (x - 1))
-                                        ++ [ viewAccent (Basics.not ws.stopped) (toString x) block.tempo ]
+                                        ++ [ viewAccent True (toString x) block.tempo ]
                                         ++ List.map (\index -> viewAccent False (toString index) block.tempo) (List.range (x + 1) accent)
                                 ]
+                    )
+                |> List.concat
+           )
+
+
+viewBlockStopped : Types.Block -> IdleState -> WorkingState -> List (Html Msg)
+viewBlockStopped block is ws =
+    [ div [ class "block-info" ]
+        [ div [ class "tempo" ]
+            [ div [ class "tempo-info" ] [ text "TEMPO" ]
+            , div [ class "tempo-value" ]
+                [ input [ type_ "text", value <| is.tempo, onInput ChangeTempo ] [ text <| is.tempo ]
+                ]
+            ]
+        , div [ class "count" ]
+            [ div [ class "count-info" ] [ text "COUNT" ]
+            , div
+                [ classList
+                    [ ( "count-value", True )
+                    , ( "animate bounce", ws.highlightCount )
+                    ]
+                , style
+                    [ ( "animation-duration"
+                      , (Basics.toString <| Basics.floor ((60000 * Time.millisecond) / Basics.toFloat block.tempo)) ++ "ms"
+                      )
+                    ]
+                ]
+                [ div
+                    []
+                    [ text <|
+                        maybeMapWithDefault ws.maybeCount Basics.toString "∞"
+                    ]
+                ]
+            ]
+        ]
+    ]
+        ++ (block.accents
+                |> List.indexedMap
+                    (\i accent ->
+                        [ div [ class "accents" ] <|
+                            List.map
+                                (\index -> viewAccent False (toString index) block.tempo)
+                                (List.range 1 accent)
+                        ]
                     )
                 |> List.concat
            )
@@ -273,6 +321,10 @@ view model =
                 [ class "block working"
                 ]
                 (viewBlockWorking model.block ws)
+
+        Stopped is ws ->
+            div [ class "block stopped" ]
+                (viewBlockStopped model.block is ws)
 
 
 block : Types.Block
@@ -297,7 +349,7 @@ block =
 
 init : Return.Return Msg Model
 init =
-    Model block (Working { maybeCount = Just 5, actual = [ 2, 1 ], stopped = False, highlightCount = True })
+    Model block (Working { maybeCount = Just 5, actual = [ 2, 1 ], highlightCount = True })
         |> Return.singleton
 
 

@@ -16,7 +16,6 @@ import String
 type alias WorkingState =
     { accents : List Int
     , maybeCount : Maybe Int
-    , stopped : Bool
     , actual : List Int
     , highlightCount : Bool
     }
@@ -26,6 +25,7 @@ type Status
     = Working WorkingState
       -- List Int is a list of current accents to do, Int is a count left
     | Idle ViewBlock.IdleState
+    | Stopped ViewBlock.IdleState WorkingState
 
 
 type alias Model =
@@ -75,12 +75,12 @@ stripList list =
 
 wsToViewBlockws : WorkingState -> ViewBlock.WorkingState
 wsToViewBlockws ws =
-    { maybeCount = ws.maybeCount, actual = ws.actual, stopped = ws.stopped, highlightCount = ws.highlightCount }
+    { maybeCount = ws.maybeCount, actual = ws.actual, highlightCount = ws.highlightCount }
 
 
 blockToIdleState : Types.Block -> ViewBlock.IdleState
 blockToIdleState block =
-    { tempo = Basics.toString block.tempo, count = Maybe.withDefault 0 block.maybeCount |> Basics.toString }
+    { tempo = Basics.toString block.tempo, count = Maybe.withDefault 1 block.maybeCount |> Basics.toString }
 
 
 update : Msg -> Model -> Return Msg Model
@@ -115,7 +115,7 @@ update msg model =
                     Start ->
                         let
                             ws =
-                                { accents = model.block.accents, maybeCount = model.block.maybeCount, stopped = False, actual = [ 1 ], highlightCount = False }
+                                { accents = model.block.accents, maybeCount = model.block.maybeCount, actual = [ 1 ], highlightCount = False }
                         in
                             { model
                                 | status = Working ws
@@ -244,61 +244,129 @@ update msg model =
                             |> Return.singleton
 
             Working ws ->
-                case ws.stopped of
-                    False ->
-                        case msg of
-                            Tick ->
-                                case ws.maybeCount of
-                                    Just count ->
-                                        if (count <= 0) then
-                                            { model | status = Idle <| blockToIdleState model.block }
+                --case ws.stopped of
+                --    False ->
+                case msg of
+                    Tick ->
+                        case ws.maybeCount of
+                            Just count ->
+                                if (count <= 0) then
+                                    { model | status = Idle <| blockToIdleState model.block }
+                                        |> Return.singleton
+                                else
+                                    case stripList ws.accents of
+                                        ( beep, Maybe.Nothing ) ->
+                                            { model | status = Working { ws | accents = model.block.accents, maybeCount = Just <| count - 1, actual = [ 1 ], highlightCount = True } }
                                                 |> Return.singleton
-                                        else
-                                            case stripList ws.accents of
-                                                ( beep, Maybe.Nothing ) ->
-                                                    { model | status = Working { ws | accents = model.block.accents, maybeCount = Just <| count - 1, actual = [ 1 ], highlightCount = True } }
-                                                        |> Return.singleton
-                                                        |> Return.command (click <| toString <| beepToClick beep)
+                                                |> Return.command (click <| toString <| beepToClick beep)
 
-                                                ( beep, Maybe.Just newAccents ) ->
-                                                    { model | status = Working { ws | accents = newAccents, actual = updateActual beep ws.actual, highlightCount = False } }
-                                                        |> Return.singleton
-                                                        |> Return.command (click <| toString <| beepToClick beep)
+                                        ( beep, Maybe.Just newAccents ) ->
+                                            { model | status = Working { ws | accents = newAccents, actual = updateActual beep ws.actual, highlightCount = False } }
+                                                |> Return.singleton
+                                                |> Return.command (click <| toString <| beepToClick beep)
+
+                            Nothing ->
+                                case stripList ws.accents of
+                                    ( beep, Maybe.Nothing ) ->
+                                        { model | status = Working { ws | accents = model.block.accents, actual = [ 1 ] } }
+                                            |> Return.singleton
+                                            |> Return.command (click <| toString <| beepToClick beep)
+
+                                    ( beep, Maybe.Just newAccents ) ->
+                                        { model | status = Working { ws | accents = newAccents, actual = updateActual beep ws.actual } }
+                                            |> Return.singleton
+                                            |> Return.command (click <| toString <| beepToClick beep)
+
+                    Stop ->
+                        { model | status = Stopped (blockToIdleState model.block) ws }
+                            |> Return.singleton
+
+                    _ ->
+                        model
+                            |> Return.singleton
+
+            Stopped is ws ->
+                case msg of
+                    Start ->
+                        { model | status = Working ws }
+                            |> Return.singleton
+                            |> Return.command (click <| toString <| High)
+
+                    Reset ->
+                        { model | status = Idle is }
+                            |> Return.singleton
+
+                    ViewMsg (ViewBlock.ChangeCount s) ->
+                        (case String.toInt s of
+                            Result.Ok i ->
+                                if (i > 0) then
+                                    let
+                                        block =
+                                            model.block
+
+                                        updateMaybeCount maybeCount i =
+                                            case maybeCount of
+                                                Just c ->
+                                                    Just i
+
+                                                Nothing ->
+                                                    Nothing
+                                    in
+                                        { model | status = Stopped is { ws | maybeCount = updateMaybeCount ws.maybeCount i } }
+                                            |> Return.singleton
+                                else
+                                    model
+                                        |> Return.singleton
+
+                            _ ->
+                                model
+                                    |> Return.singleton
+                        )
+                            |> Return.map
+                                (\m ->
+                                    { m | status = Stopped { is | count = s } ws }
+                                )
+
+                    ViewMsg (ViewBlock.ClickCount) ->
+                        let
+                            block =
+                                model.block
+
+                            updateMaybeCount maybeCount =
+                                case maybeCount of
+                                    Just c ->
+                                        Nothing
 
                                     Nothing ->
-                                        case stripList ws.accents of
-                                            ( beep, Maybe.Nothing ) ->
-                                                { model | status = Working { ws | accents = model.block.accents, actual = [ 1 ] } }
-                                                    |> Return.singleton
-                                                    |> Return.command (click <| toString <| beepToClick beep)
+                                        Just 1
+                        in
+                            { model | block = { block | maybeCount = updateMaybeCount block.maybeCount } }
+                                |> Return.singleton
 
-                                            ( beep, Maybe.Just newAccents ) ->
-                                                { model | status = Working { ws | accents = newAccents, actual = updateActual beep ws.actual } }
-                                                    |> Return.singleton
-                                                    |> Return.command (click <| toString <| beepToClick beep)
-
-                            Stop ->
-                                { model | status = Working { ws | stopped = True } }
-                                    |> Return.singleton
-
-                            _ ->
-                                model
-                                    |> Return.singleton
-
-                    True ->
-                        case msg of
-                            Start ->
-                                { model | status = Working { ws | stopped = False } }
-                                    |> Return.singleton
-                                    |> Return.command (click <| toString <| High)
-
-                            Reset ->
-                                { model | status = Idle <| blockToIdleState model.block }
-                                    |> Return.singleton
+                    ViewMsg (ViewBlock.ChangeTempo s) ->
+                        (case String.toInt s of
+                            Result.Ok i ->
+                                if (i > 0) then
+                                    let
+                                        block =
+                                            model.block
+                                    in
+                                        { model | block = { block | tempo = i } }
+                                            |> Return.singleton
+                                else
+                                    model
+                                        |> Return.singleton
 
                             _ ->
                                 model
                                     |> Return.singleton
+                        )
+                            |> Return.map
+                                (\m -> { m | status = Stopped { is | tempo = s } ws })
+
+                    _ ->
+                        model
+                            |> Return.singleton
 
 
 view : Model -> Html Msg
@@ -311,6 +379,9 @@ view model =
 
             Working ws ->
                 ViewBlock.view { status = ViewBlock.Working <| wsToViewBlockws ws, block = model.block }
+
+            Stopped is ws ->
+                ViewBlock.view { status = ViewBlock.Stopped is <| wsToViewBlockws ws, block = model.block }
           )
             |> Html.map ViewMsg
         ]
@@ -319,30 +390,28 @@ view model =
 viewTest : Model -> Html Msg
 viewTest model =
     div []
-        [ Html.button
+        [ Html.text <| toString model
+        , Html.p [] []
+        , Html.button
             [ case model.status of
                 Idle is ->
                     Html.Events.onClick Start
 
                 Working ws ->
-                    case ws.stopped of
-                        True ->
-                            Html.Events.onClick Start
+                    Html.Events.onClick Stop
 
-                        False ->
-                            Html.Events.onClick Stop
+                Stopped is ws ->
+                    Html.Events.onClick Start
             ]
             [ case model.status of
                 Idle is ->
                     Html.text "Start"
 
                 Working ws ->
-                    case ws.stopped of
-                        True ->
-                            Html.text "Resume"
+                    Html.text "Stop"
 
-                        False ->
-                            Html.text "Stop"
+                Stopped is ws ->
+                    Html.text "Resume"
             ]
         , Html.button
             [ case model.status of
@@ -350,12 +419,10 @@ viewTest model =
                     Html.Attributes.disabled True
 
                 Working ws ->
-                    case ws.stopped of
-                        True ->
-                            Html.Events.onClick Reset
+                    Html.Attributes.disabled True
 
-                        False ->
-                            Html.Attributes.disabled True
+                Stopped is ws ->
+                    Html.Events.onClick Reset
             ]
             [ Html.text "Reset" ]
         , Html.p [] []
@@ -398,12 +465,7 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.status of
         Working ws ->
-            case ws.stopped of
-                False ->
-                    Time.every (tempoToMs model.block.tempo) <| Basics.always Tick
-
-                True ->
-                    Sub.none
+            Time.every (tempoToMs model.block.tempo) <| Basics.always Tick
 
         _ ->
             Sub.none
