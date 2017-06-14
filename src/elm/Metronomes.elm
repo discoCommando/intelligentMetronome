@@ -314,7 +314,7 @@ update msg model =
                                         |> Return.mapCmd (MetronomeMsg <| getActualIndex ws + 1)
                                         |> Return.map
                                             (\metronomeModel ->
-                                                { model | status = Working { ws | previous = ws.previous ++ [ ws.actual ], actual = metronomeModel, next = xs, paused = False } }
+                                                { model | status = Working { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = metronomeModel, next = xs, paused = False } }
                                             )
 
                         Stop ->

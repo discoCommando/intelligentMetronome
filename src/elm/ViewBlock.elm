@@ -245,7 +245,7 @@ viewBlockWorking block ws =
             , div
                 [ classList
                     [ ( "count-value", True )
-                    , ( "animate bounce", ws.highlightCount )
+                    , ( "highlight-no-color", ws.highlightCount )
                     ]
                 , style
                     [ ( "animation-duration"
