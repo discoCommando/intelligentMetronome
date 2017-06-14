@@ -1,5 +1,5 @@
 body {
-    background-color:  rgb(240, 240, 240);
+    
 }
 
 body * {
@@ -77,6 +77,7 @@ body * {
     box-shadow: rgba(0,0,0,0.2) 0px 2px 3px;
     border-color: rgb(245,245,245);
     background-color:  rgb(245,245,245);
+    margin: 10px auto;
 }
 
 .accents:nth-child(even) {
@@ -252,4 +253,115 @@ button {
         /*box-shadow:0px 0px 50px 5px #0066cc;*/
         background-color: #FFB0AA; 
     }
+}
+
+body {
+    background-color:  rgb(240, 240, 240);
+    position: relative;
+    width: 100%;
+    display: block;
+}
+
+#app {
+    width: 500px;
+    margin: 0 auto;
+    /*position: relative;*/ 
+}
+
+.metronomes {
+    margin: 0 auto;
+    /*width: 437px;*/
+}
+
+.control-buttons {
+    margin: 0 auto;
+    width: 192px;
+    position: sticky;
+    position: -webkit-sticky;
+    position: -moz-sticky;
+    position: -ms-sticky;
+    position: -o-sticky;
+    top: 10px;
+    z-index: 999;
+    /*left: 50%;*/
+}
+
+
+#stop-button {
+    background:url(icons/stop2.png) no-repeat; 
+    background-size: 40px 40px;
+    background-position: center;
+    background-color: rgb(255, 255, 255);
+}
+
+#stop-button:hover:enabled {
+    background:url(icons/stop-black.png) no-repeat; 
+    background-size: 40px 40px;
+    background-position: center;
+    background-color: rgb(255, 255, 255);
+}
+#stop-button:disabled {
+    background:url(icons/stop2.png) no-repeat; 
+    background-size: 40px 40px;
+    background-position: center;
+    background-color: rgba(255, 255, 255, 0.2);
+}
+#start-button {
+    background:url(icons/play-arrow2.png) no-repeat; 
+    background-size: 40px 40px;
+    background-position: center;
+    background-color: rgb(255, 255, 255);
+}
+#start-button:hover:enabled {
+    background:url(icons/play-arrow-black.png) no-repeat; 
+    background-size: 40px 40px;
+    background-position: center;
+    background-color: rgb(255, 255, 255);
+}
+#pause-button {
+    background:url(icons/pause2.png) no-repeat; 
+    background-size: 40px 40px;
+    background-position: center;
+    background-color: rgb(255, 255, 255);
+}
+#pause-button:hover:enabled {
+    background:url(icons/pause-black.png) no-repeat; 
+    background-size: 40px 40px;
+    background-position: center;
+    background-color: rgb(255, 255, 255);
+}
+#next-button {
+    background:url(icons/skip-next2.png) no-repeat; 
+    background-size: 40px 40px;
+    background-position: center;
+    background-color: rgb(255, 255, 255);
+}
+#next-button:hover:enabled {
+    background:url(icons/skip-next-black.png) no-repeat; 
+    background-size: 40px 40px;
+    background-position: center;
+    background-color: rgb(255, 255, 255);
+}
+
+.control-button {
+
+    background-size: 40px 40px;
+    background-position: center;
+    background-color: rgb(230, 230, 230);
+}
+
+.control-buttons button {
+    width: 60px;
+    height: 60px;
+
+    border-width: 0px ;
+    border-radius: 5px;
+    border-style: solid;
+    box-shadow: rgba(0,0,0,0.4) 0px 1px 2px;
+    border-color: rgb(255,255,255);
+    /*width: 23px;*/
+    /*height: 23px;*/
+    /*background-color : rgb(255,255,255);*/
+    padding : 0px;
+    margin : 2px;
 }

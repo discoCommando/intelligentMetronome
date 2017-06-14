@@ -356,46 +356,48 @@ viewMetronomes model =
 view : Model -> Html Msg
 view model =
     div []
-        [ Html.text <| toString model
-        , Html.p [] []
-        , Html.button
-            [ case model.status of
-                Idle ->
-                    Html.Events.onClick Start
+        [ Html.div [ class "control-buttons" ]
+            [ Html.button
+                (case model.status of
+                    Idle ->
+                        [ Html.Events.onClick Start
+                        , id "start-button"
+                        , class "control-button"
+                        ]
 
-                Working ws ->
-                    case ws.paused of
-                        True ->
-                            Html.Events.onClick Start
+                    Working ws ->
+                        case ws.paused of
+                            True ->
+                                [ Html.Events.onClick Start
+                                , id "start-button"
+                                , class "control-button"
+                                ]
 
-                        False ->
-                            Html.Events.onClick Pause
+                            False ->
+                                [ Html.Events.onClick Pause
+                                , id "pause-button"
+                                , class "control-button"
+                                ]
+                )
+                []
+            , Html.button
+                [ case model.status of
+                    Idle ->
+                        Html.Attributes.disabled True
+
+                    Working ws ->
+                        Html.Events.onClick Stop
+                , id "stop-button"
+                , class "control-button"
+                ]
+                []
+            , Html.button
+                [ Html.Events.onClick Next
+                , id "next-button"
+                , class "control-button"
+                ]
+                []
             ]
-            [ case model.status of
-                Idle ->
-                    Html.text "Start"
-
-                Working ws ->
-                    case ws.paused of
-                        True ->
-                            Html.text "Resume"
-
-                        False ->
-                            Html.text "Pause"
-            ]
-        , Html.button
-            [ case model.status of
-                Idle ->
-                    Html.Attributes.disabled True
-
-                Working ws ->
-                    Html.Events.onClick Stop
-            ]
-            [ Html.text "Stop" ]
-        , Html.button
-            [ Html.Events.onClick Next
-            ]
-            [ Html.text "Next" ]
         , viewMetronomes model
         ]
 
