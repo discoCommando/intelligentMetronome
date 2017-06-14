@@ -462,6 +462,14 @@ subscriptions model =
             Sub.none
 
 
+emptyModel : Model
+emptyModel =
+    { block = { tempo = 120, accents = [], maybeCount = Nothing }
+    , status = Idle
+    , temps = { tempo = "120", count = "1" }
+    }
+
+
 port click : String -> Platform.Cmd.Cmd msg
 
 

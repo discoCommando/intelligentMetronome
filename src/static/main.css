@@ -77,7 +77,7 @@ body * {
     box-shadow: rgba(0,0,0,0.2) 0px 2px 3px;
     border-color: rgb(245,245,245);
     background-color:  rgb(245,245,245);
-    margin: 10px auto;
+    margin: 15px auto;
 }
 
 .accents:nth-child(even) {
@@ -318,6 +318,12 @@ body {
     background-position: center;
     background-color: rgb(255, 255, 255);
 }
+#start-button:disabled {
+    background:url(icons/play-arrow2.png) no-repeat; 
+    background-size: 40px 40px;
+    background-position: center;
+    background-color: rgba(255, 255, 255, 0.2);
+}
 #pause-button {
     background:url(icons/pause2.png) no-repeat; 
     background-size: 40px 40px;
@@ -342,6 +348,12 @@ body {
     background-position: center;
     background-color: rgb(255, 255, 255);
 }
+#next-button:disabled {
+    background:url(icons/skip-next2.png) no-repeat; 
+    background-size: 40px 40px;
+    background-position: center;
+    background-color: rgba(255, 255, 255, 0.2);
+}
 
 .control-button {
 
@@ -364,6 +376,7 @@ body {
     /*background-color : rgb(255,255,255);*/
     padding : 0px;
     margin : 2px;
+    margin-bottom: 15px; 
 }
 
 .exit {
@@ -397,9 +410,35 @@ body {
     color: Black;
 }
 
-.add-block-button {
-    width: 437px;
-    margin: 10px auto;
-    padding: 0;
-    position: absolute;
+.add-block-button, .add-block-button-mini {
+    /*padding: 0;*/
+    text-align: center;
 } 
+
+.add-block-button button {
+    width: 437px;
+    /*margin: 15px auto;*/
+    border-radius: 10px;
+    border-style: dashed;
+    border-width: 10px;
+    background-color: rgba(240,240,240,1); 
+    text-shadow : 0px 1px 4px rgb(20, 20, 20);
+    font-size: 30;
+    font-weight: bold;
+    color: rgb(240,240,240);
+    font-family: arial;
+    cursor: pointer;
+
+}
+
+.add-block-button button:hover {
+    width: 437px;
+    /*margin: 20px auto;*/
+    font-size: 49;
+    /*background-color: rgba(230,230,230,1);*/
+    /*font-size: 65;*/
+    font-weight: bold;
+    color: rgb(0,0,0);
+    font-family: arial;
+    border-color: rgba(200,200,200,1)
+}

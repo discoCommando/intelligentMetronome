@@ -107,6 +107,7 @@ type Msg
     | Stop
     | Next
     | TickMsg Metronome.Msg
+    | AddBlock Int
 
 
 insert : Int -> a -> List a -> List a
@@ -146,6 +147,19 @@ remove i list =
                 xs
             else
                 x :: remove (i - 1) xs
+
+
+addAt : Int -> a -> List a -> List a
+addAt i a list =
+    case list of
+        [] ->
+            [ a ]
+
+        x :: xs ->
+            if (i <= 0) then
+                a :: x :: xs
+            else
+                x :: addAt (i - 1) a xs
 
 
 insertWs : Int -> a -> { m | previous : List a, actual : a, next : List a } -> { m | previous : List a, actual : a, next : List a }
@@ -226,6 +240,10 @@ update msg model =
                                         { model | metronomes = insert i changedMetronomeModel model.metronomes }
                                             |> Return.singleton
                                             |> Return.command (Platform.Cmd.map (MetronomeMsg i) metronomeCmd)
+
+                AddBlock i ->
+                    { model | metronomes = addAt i Metronome.emptyModel model.metronomes }
+                        |> Return.singleton
 
                 _ ->
                     model |> Return.singleton
@@ -360,8 +378,21 @@ viewMetronomes model =
         ]
         (case model.status of
             Idle ->
-                List.indexedMap (\index metronome -> Metronome.view metronome |> Html.map (MetronomeMsg index)) model.metronomes
-                    ++ [ div [] [ button [ class "add-block-button" ] [ Html.text "+" ] ] ]
+                (List.indexedMap
+                    (\index metronome ->
+                        [ div
+                            [ class "add-block-button" ]
+                            [ button [ onClick <| AddBlock index ] [ Html.text "+" ] ]
+                        , Metronome.view metronome |> Html.map (MetronomeMsg index)
+                        ]
+                    )
+                    model.metronomes
+                    |> List.concat
+                )
+                    ++ [ div
+                            [ class "add-block-button" ]
+                            [ button [ onClick <| AddBlock <| List.length model.metronomes ] [ Html.text "+" ] ]
+                       ]
 
             Working ws ->
                 let
@@ -384,6 +415,7 @@ view model =
                         [ Html.Events.onClick Start
                         , id "start-button"
                         , class "control-button"
+                        , disabled <| List.length model.metronomes <= 0
                         ]
 
                     Working ws ->
@@ -416,6 +448,7 @@ view model =
                 [ Html.Events.onClick Next
                 , id "next-button"
                 , class "control-button"
+                , disabled <| List.length model.metronomes <= 0
                 ]
                 []
             ]
