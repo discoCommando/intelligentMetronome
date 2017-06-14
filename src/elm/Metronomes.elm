@@ -361,6 +361,7 @@ viewMetronomes model =
         (case model.status of
             Idle ->
                 List.indexedMap (\index metronome -> Metronome.view metronome |> Html.map (MetronomeMsg index)) model.metronomes
+                    ++ [ div [] [ button [ class "add-block-button" ] [ Html.text "+" ] ] ]
 
             Working ws ->
                 let

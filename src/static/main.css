@@ -396,3 +396,10 @@ body {
     margin-left: 203px;
     color: Black;
 }
+
+.add-block-button {
+    width: 437px;
+    margin: 10px auto;
+    padding: 0;
+    position: absolute;
+} 
