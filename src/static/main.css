@@ -80,6 +80,7 @@ body * {
     margin: 15px auto;
 }
 
+
 .accents:nth-child(even) {
     background-color:  rgb(230,230,230);   
 }
@@ -298,7 +299,7 @@ body {
 
 .metronomes {
     margin: 0 auto;
-    /*width: 437px;*/
+    width: 437px;
 }
 
 .control-buttons {
@@ -469,5 +470,26 @@ body {
     font-weight: bold;
     color: rgb(0,0,0);
     font-family: arial;
-    border-color: rgba(200,200,200,1)
+    border-color: rgba(200,200,200,1);
+}
+
+.past * {
+
+    /*width: 1000px;*/
+    /*height: 1000px;*/
+    /*font-size: 232;*/
+    /*background: rgba(200,200,200, 1);*/
+
+    -o-transition:.5s;
+    -ms-transition:.5s;
+    -moz-transition:.5s;
+    -webkit-transition:.5s;
+    /* ...and now for the proper property */
+    transition:.5s;
+    opacity: 0.75;
+}
+
+#actual:focus {
+    /*border-width: 6px;*/
+    /*width: 437px;*/
 }

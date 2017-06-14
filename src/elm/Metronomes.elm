@@ -10,6 +10,8 @@ import Html.Events exposing (..)
 import Time
 import Platform.Cmd
 import ViewBlock
+import Dom
+import Task
 
 
 type alias WorkingState =
@@ -108,6 +110,7 @@ type Msg
     | Next
     | TickMsg Metronome.Msg
     | AddBlock Int
+    | Focus
 
 
 insert : Int -> a -> List a -> List a
@@ -289,6 +292,7 @@ update msg model =
                                                         |> Return.singleton
                                                         |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws) metronomeCmd)
                                                         |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws + 1) xCmd)
+                                                        |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
 
                                     _ ->
                                         { model | status = Working { ws | actual = changedMetronomeModel } }
@@ -316,6 +320,7 @@ update msg model =
                                             (\metronomeModel ->
                                                 { model | status = Working { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = metronomeModel, next = xs, paused = False } }
                                             )
+                                        |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
 
                         Stop ->
                             { model | status = Idle }
@@ -348,6 +353,7 @@ update msg model =
                                 x :: xs ->
                                     { model | status = Working { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = Metronome.makePaused x, next = xs, paused = True } }
                                         |> Return.singleton
+                                        |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
 
                         MetronomeMsg i msg ->
                             case atWs i ws of
@@ -399,8 +405,17 @@ viewMetronomes model =
                     actualIndex =
                         getActualIndex ws
                 in
-                    List.indexedMap (\index metronome -> Metronome.view metronome |> Html.map (MetronomeMsg index)) ws.previous
-                        ++ [ (Metronome.view ws.actual |> Html.map (MetronomeMsg actualIndex)) ]
+                    [ div
+                        [ class "past" ]
+                      <|
+                        List.indexedMap
+                            (\index metronome -> Metronome.view metronome |> Html.map (MetronomeMsg index))
+                            ws.previous
+                    ]
+                        ++ [ div
+                                [ id "actual", Html.Attributes.tabindex 0 ]
+                                [ (Metronome.view ws.actual |> Html.map (MetronomeMsg actualIndex)) ]
+                           ]
                         ++ List.indexedMap (\index metronome -> Metronome.view metronome |> Html.map (MetronomeMsg <| index + actualIndex)) ws.next
         )
 

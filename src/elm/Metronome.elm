@@ -350,23 +350,20 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    Html.div
-        []
-        [ (case model.status of
-            Idle ->
-                ViewBlock.view { status = ViewBlock.Idle, block = model.block, temps = model.temps }
+    (case model.status of
+        Idle ->
+            ViewBlock.view { status = ViewBlock.Idle, block = model.block, temps = model.temps }
 
-            Working ws ->
-                ViewBlock.view { status = ViewBlock.Working <| wsToViewBlockws ws, block = model.block, temps = model.temps }
+        Working ws ->
+            ViewBlock.view { status = ViewBlock.Working <| wsToViewBlockws ws, block = model.block, temps = model.temps }
 
-            Paused ws ->
-                ViewBlock.view { status = ViewBlock.Paused <| wsToViewBlockws ws, block = model.block, temps = model.temps }
+        Paused ws ->
+            ViewBlock.view { status = ViewBlock.Paused <| wsToViewBlockws ws, block = model.block, temps = model.temps }
 
-            Finished ->
-                ViewBlock.view { status = ViewBlock.Finished, block = model.block, temps = model.temps }
-          )
-            |> Html.map ViewMsg
-        ]
+        Finished ->
+            ViewBlock.view { status = ViewBlock.Finished, block = model.block, temps = model.temps }
+    )
+        |> Html.map ViewMsg
 
 
 viewTest : Model -> Html Msg
