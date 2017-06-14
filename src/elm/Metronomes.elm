@@ -9,6 +9,7 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Time
 import Platform.Cmd
+import ViewBlock
 
 
 type alias WorkingState =
@@ -134,6 +135,19 @@ at i list =
                 at (i - 1) xs
 
 
+remove : Int -> List a -> List a
+remove i list =
+    case list of
+        [] ->
+            []
+
+        x :: xs ->
+            if (i <= 0) then
+                xs
+            else
+                x :: remove (i - 1) xs
+
+
 insertWs : Int -> a -> { m | previous : List a, actual : a, next : List a } -> { m | previous : List a, actual : a, next : List a }
 insertWs i a m =
     if (i < List.length m.previous) then
@@ -199,13 +213,19 @@ update msg model =
                                 |> Return.singleton
 
                         Just metronomeModel ->
-                            let
-                                ( changedMetronomeModel, metronomeCmd ) =
-                                    Metronome.update msg metronomeModel
-                            in
-                                { model | metronomes = insert i changedMetronomeModel model.metronomes }
-                                    |> Return.singleton
-                                    |> Return.command (Platform.Cmd.map (MetronomeMsg i) metronomeCmd)
+                            case msg of
+                                Metronome.ViewMsg (ViewBlock.RemoveAll) ->
+                                    { model | metronomes = remove i model.metronomes }
+                                        |> Return.singleton
+
+                                _ ->
+                                    let
+                                        ( changedMetronomeModel, metronomeCmd ) =
+                                            Metronome.update msg metronomeModel
+                                    in
+                                        { model | metronomes = insert i changedMetronomeModel model.metronomes }
+                                            |> Return.singleton
+                                            |> Return.command (Platform.Cmd.map (MetronomeMsg i) metronomeCmd)
 
                 _ ->
                     model |> Return.singleton

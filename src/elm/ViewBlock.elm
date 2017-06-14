@@ -46,6 +46,7 @@ type Msg
     | ChangeTempo String
     | ClickCount
     | ChangeCount String
+    | RemoveAll
       -- external messages
     | Tick WorkingState
     | New Types.Block
@@ -183,6 +184,11 @@ viewBlockIdle block temps =
                             "∞"
                     ]
                 ]
+            , button
+                [ class "exit"
+                , Html.Events.onClick RemoveAll
+                ]
+                [ text "✖" ]
             ]
         ]
     ]

@@ -365,3 +365,34 @@ body {
     padding : 0px;
     margin : 2px;
 }
+
+.exit {
+    border-width: 0px ;
+    border-radius: 13px;
+    border-style: solid;
+    border-color: rgb(230, 230, 230);
+    box-shadow: rgba(0,0,0,0.4) 0px 1px 2px;
+    position: absolute;
+    /*top: ;*/
+    /*top: -20px;*/
+    margin-top: -94px;
+    margin-left: 205px;
+    width: 26px;
+    height: 26px;
+    text-align: center;
+    background-color: rgba(230,230,230); 
+    /*top: 0;*/
+    text-shadow : 0px 1px 4px rgb(20, 20, 20);
+    color : rgb(240, 240, 240);
+    cursor: pointer;
+}
+
+.exit:hover {
+    background-color: rgb(240,240,240); 
+    border-radius: 15px;
+    width: 30px;
+    height: 30px;
+    margin-top: -96px;
+    margin-left: 203px;
+    color: Black;
+}
