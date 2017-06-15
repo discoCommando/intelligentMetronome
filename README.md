@@ -1,6 +1,6 @@
 # Intelligent Metronome
 
-Metronome designed for training with complex time signatures or creating specific metronomes for complex songs. 
+Metronome designed for training with complex time signatures or creating specific metronomes for complex songs. [Try it](http://discocommando.github.io/intelligentMetronome/)!
 
 ## Technology
 
