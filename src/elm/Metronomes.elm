@@ -111,6 +111,8 @@ type Msg
     | TickMsg Metronome.Msg
     | AddBlock Int
     | Focus
+    | ChangeTrack String
+    | ChangeArtist String
 
 
 insert : Int -> a -> List a -> List a
@@ -192,187 +194,197 @@ getActualIndex ws =
 
 update : Msg -> Model -> Return Msg Model
 update msg model =
-    case model.status of
-        Idle ->
-            case msg of
-                Start ->
-                    case model.metronomes of
-                        [] ->
-                            model |> Return.singleton
+    case msg of
+        ChangeTrack s ->
+            { model | track = s }
+                |> Return.singleton
 
-                        metronomeModel :: rest ->
-                            Metronome.update Metronome.Start metronomeModel
-                                |> Return.mapCmd (MetronomeMsg 0)
-                                |> Return.map
-                                    (\changedMetronomeModel ->
-                                        { model | status = Working { previous = [], actual = changedMetronomeModel, next = List.map Metronome.makeFinished rest, paused = False } }
-                                    )
+        ChangeArtist s ->
+            { model | artist = s }
+                |> Return.singleton
 
-                Next ->
-                    case model.metronomes of
-                        [] ->
-                            model |> Return.singleton
-
-                        metronomeModel :: rest ->
-                            Metronome.update Metronome.Start metronomeModel
-                                |> Return.dropCmd
-                                |> Return.mapCmd (MetronomeMsg 0)
-                                |> Return.map
-                                    (\changedMetronomeModel ->
-                                        { model | status = Working { previous = [], actual = changedMetronomeModel, next = List.map Metronome.makeFinished rest, paused = True } }
-                                    )
-                                |> Return.andThen (\m -> update Next m)
-
-                MetronomeMsg i msg ->
-                    case at i model.metronomes of
-                        Nothing ->
-                            model
-                                |> Return.singleton
-
-                        Just metronomeModel ->
-                            case msg of
-                                Metronome.ViewMsg (ViewBlock.RemoveAll) ->
-                                    { model | metronomes = remove i model.metronomes }
-                                        |> Return.singleton
-
-                                _ ->
-                                    let
-                                        ( changedMetronomeModel, metronomeCmd ) =
-                                            Metronome.update msg metronomeModel
-                                    in
-                                        { model | metronomes = insert i changedMetronomeModel model.metronomes }
-                                            |> Return.singleton
-                                            |> Return.command (Platform.Cmd.map (MetronomeMsg i) metronomeCmd)
-
-                AddBlock i ->
-                    { model | metronomes = addAt i Metronome.emptyModel model.metronomes }
-                        |> Return.singleton
-
-                _ ->
-                    model |> Return.singleton
-
-        Working ws ->
-            case ws.paused of
-                False ->
+        _ ->
+            case model.status of
+                Idle ->
                     case msg of
+                        Start ->
+                            case model.metronomes of
+                                [] ->
+                                    model |> Return.singleton
+
+                                metronomeModel :: rest ->
+                                    Metronome.update Metronome.Start metronomeModel
+                                        |> Return.mapCmd (MetronomeMsg 0)
+                                        |> Return.map
+                                            (\changedMetronomeModel ->
+                                                { model | status = Working { previous = [], actual = changedMetronomeModel, next = List.map Metronome.makeFinished rest, paused = False } }
+                                            )
+
+                        Next ->
+                            case model.metronomes of
+                                [] ->
+                                    model |> Return.singleton
+
+                                metronomeModel :: rest ->
+                                    Metronome.update Metronome.Start metronomeModel
+                                        |> Return.dropCmd
+                                        |> Return.mapCmd (MetronomeMsg 0)
+                                        |> Return.map
+                                            (\changedMetronomeModel ->
+                                                { model | status = Working { previous = [], actual = changedMetronomeModel, next = List.map Metronome.makeFinished rest, paused = True } }
+                                            )
+                                        |> Return.andThen (\m -> update Next m)
+
                         MetronomeMsg i msg ->
-                            case atWs i ws of
+                            case at i model.metronomes of
                                 Nothing ->
                                     model
                                         |> Return.singleton
 
                                 Just metronomeModel ->
+                                    case msg of
+                                        Metronome.ViewMsg (ViewBlock.RemoveAll) ->
+                                            { model | metronomes = remove i model.metronomes }
+                                                |> Return.singleton
+
+                                        _ ->
+                                            let
+                                                ( changedMetronomeModel, metronomeCmd ) =
+                                                    Metronome.update msg metronomeModel
+                                            in
+                                                { model | metronomes = insert i changedMetronomeModel model.metronomes }
+                                                    |> Return.singleton
+                                                    |> Return.command (Platform.Cmd.map (MetronomeMsg i) metronomeCmd)
+
+                        AddBlock i ->
+                            { model | metronomes = addAt i Metronome.emptyModel model.metronomes }
+                                |> Return.singleton
+
+                        _ ->
+                            model |> Return.singleton
+
+                Working ws ->
+                    case ws.paused of
+                        False ->
+                            case msg of
+                                MetronomeMsg i msg ->
+                                    case atWs i ws of
+                                        Nothing ->
+                                            model
+                                                |> Return.singleton
+
+                                        Just metronomeModel ->
+                                            let
+                                                ( changedMetronomeModel, metronomeCmd ) =
+                                                    Metronome.update msg metronomeModel
+                                            in
+                                                { model | status = Working <| insertWs i changedMetronomeModel ws }
+                                                    |> Return.singleton
+                                                    |> Return.command (Platform.Cmd.map (MetronomeMsg i) metronomeCmd)
+
+                                TickMsg msg ->
                                     let
                                         ( changedMetronomeModel, metronomeCmd ) =
-                                            Metronome.update msg metronomeModel
+                                            Metronome.update msg ws.actual
                                     in
-                                        { model | status = Working <| insertWs i changedMetronomeModel ws }
-                                            |> Return.singleton
-                                            |> Return.command (Platform.Cmd.map (MetronomeMsg i) metronomeCmd)
+                                        case changedMetronomeModel.status of
+                                            Metronome.Finished ->
+                                                case ws.next of
+                                                    [] ->
+                                                        { model | status = Idle }
+                                                            |> Return.singleton
+                                                            |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws) metronomeCmd)
 
-                        TickMsg msg ->
-                            let
-                                ( changedMetronomeModel, metronomeCmd ) =
-                                    Metronome.update msg ws.actual
-                            in
-                                case changedMetronomeModel.status of
-                                    Metronome.Finished ->
-                                        case ws.next of
-                                            [] ->
-                                                { model | status = Idle }
+                                                    x :: xs ->
+                                                        let
+                                                            ( changedX, xCmd ) =
+                                                                Metronome.update Metronome.Start x
+                                                        in
+                                                            { model | status = Working { previous = ws.previous ++ [ changedMetronomeModel ], actual = changedX, next = xs, paused = False } }
+                                                                |> Return.singleton
+                                                                |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws) metronomeCmd)
+                                                                |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws + 1) xCmd)
+                                                                |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
+
+                                            _ ->
+                                                { model | status = Working { ws | actual = changedMetronomeModel } }
                                                     |> Return.singleton
                                                     |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws) metronomeCmd)
 
-                                            x :: xs ->
-                                                let
-                                                    ( changedX, xCmd ) =
-                                                        Metronome.update Metronome.Start x
-                                                in
-                                                    { model | status = Working { previous = ws.previous ++ [ changedMetronomeModel ], actual = changedX, next = xs, paused = False } }
-                                                        |> Return.singleton
-                                                        |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws) metronomeCmd)
-                                                        |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws + 1) xCmd)
-                                                        |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
-
-                                    _ ->
-                                        { model | status = Working { ws | actual = changedMetronomeModel } }
-                                            |> Return.singleton
-                                            |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws) metronomeCmd)
-
-                        Pause ->
-                            Metronome.update Metronome.Pause ws.actual
-                                |> Return.mapCmd (MetronomeMsg <| getActualIndex ws)
-                                |> Return.map
-                                    (\metronomeModel ->
-                                        { model | status = Working { ws | actual = metronomeModel, paused = True } }
-                                    )
-
-                        Next ->
-                            case ws.next of
-                                [] ->
-                                    { model | status = Idle }
-                                        |> Return.singleton
-
-                                x :: xs ->
-                                    Metronome.update Metronome.Start x
-                                        |> Return.mapCmd (MetronomeMsg <| getActualIndex ws + 1)
+                                Pause ->
+                                    Metronome.update Metronome.Pause ws.actual
+                                        |> Return.mapCmd (MetronomeMsg <| getActualIndex ws)
                                         |> Return.map
                                             (\metronomeModel ->
-                                                { model | status = Working { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = metronomeModel, next = xs, paused = False } }
+                                                { model | status = Working { ws | actual = metronomeModel, paused = True } }
                                             )
-                                        |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
 
-                        Stop ->
-                            { model | status = Idle }
-                                |> Return.singleton
+                                Next ->
+                                    case ws.next of
+                                        [] ->
+                                            { model | status = Idle }
+                                                |> Return.singleton
 
-                        _ ->
-                            model
-                                |> Return.singleton
+                                        x :: xs ->
+                                            Metronome.update Metronome.Start x
+                                                |> Return.mapCmd (MetronomeMsg <| getActualIndex ws + 1)
+                                                |> Return.map
+                                                    (\metronomeModel ->
+                                                        { model | status = Working { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = metronomeModel, next = xs, paused = False } }
+                                                    )
+                                                |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
 
-                True ->
-                    case msg of
-                        Start ->
-                            Metronome.update Metronome.Start ws.actual
-                                |> Return.mapCmd (MetronomeMsg <| getActualIndex ws)
-                                |> Return.map
-                                    (\metronomeModel ->
-                                        { model | status = Working { ws | actual = metronomeModel, paused = False } }
-                                    )
-
-                        Stop ->
-                            { model | status = Idle }
-                                |> Return.singleton
-
-                        Next ->
-                            case ws.next of
-                                [] ->
+                                Stop ->
                                     { model | status = Idle }
                                         |> Return.singleton
 
-                                x :: xs ->
-                                    { model | status = Working { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = Metronome.makePaused x, next = xs, paused = True } }
-                                        |> Return.singleton
-                                        |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
-
-                        MetronomeMsg i msg ->
-                            case atWs i ws of
-                                Nothing ->
+                                _ ->
                                     model
                                         |> Return.singleton
 
-                                Just metronomeModel ->
-                                    let
-                                        ( changedMetronomeModel, metronomeCmd ) =
-                                            Metronome.update msg metronomeModel
-                                    in
-                                        { model | status = Working <| insertWs i changedMetronomeModel ws }
-                                            |> Return.singleton
-                                            |> Return.command (Platform.Cmd.map (MetronomeMsg i) metronomeCmd)
+                        True ->
+                            case msg of
+                                Start ->
+                                    Metronome.update Metronome.Start ws.actual
+                                        |> Return.mapCmd (MetronomeMsg <| getActualIndex ws)
+                                        |> Return.map
+                                            (\metronomeModel ->
+                                                { model | status = Working { ws | actual = metronomeModel, paused = False } }
+                                            )
 
-                        _ ->
-                            model
-                                |> Return.singleton
+                                Stop ->
+                                    { model | status = Idle }
+                                        |> Return.singleton
+
+                                Next ->
+                                    case ws.next of
+                                        [] ->
+                                            { model | status = Idle }
+                                                |> Return.singleton
+
+                                        x :: xs ->
+                                            { model | status = Working { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = Metronome.makePaused x, next = xs, paused = True } }
+                                                |> Return.singleton
+                                                |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
+
+                                MetronomeMsg i msg ->
+                                    case atWs i ws of
+                                        Nothing ->
+                                            model
+                                                |> Return.singleton
+
+                                        Just metronomeModel ->
+                                            let
+                                                ( changedMetronomeModel, metronomeCmd ) =
+                                                    Metronome.update msg metronomeModel
+                                            in
+                                                { model | status = Working <| insertWs i changedMetronomeModel ws }
+                                                    |> Return.singleton
+                                                    |> Return.command (Platform.Cmd.map (MetronomeMsg i) metronomeCmd)
+
+                                _ ->
+                                    model
+                                        |> Return.singleton
 
 
 viewMetronomes : Model -> Html Msg
@@ -423,7 +435,17 @@ viewMetronomes model =
 view : Model -> Html Msg
 view model =
     div []
-        [ Html.div [ class "control-buttons" ]
+        [ Html.div [ class "title" ] [ text "Intelligent Metronome" ]
+        , Html.div [ class "info" ]
+            [ text "Track"
+            , p [] []
+            , input [ type_ "text", onInput ChangeTrack, value model.track ] []
+            , p [] []
+            , text "Artist"
+            , p [] []
+            , input [ type_ "text", onInput ChangeArtist, value model.artist ] []
+            ]
+        , Html.div [ class "control-buttons" ]
             [ Html.button
                 (case model.status of
                     Idle ->
