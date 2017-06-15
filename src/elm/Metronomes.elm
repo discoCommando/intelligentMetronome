@@ -490,6 +490,11 @@ view model =
                 []
             ]
         , viewMetronomes model
+        , div [ class "footer" ]
+            [ text <| "All code for Intelligent Metronome is open source. "
+            , a [ href "https://github.com/discoCommando/intelligentMetronome" ] [ text <| "Check it out!" ]
+            , text <| " — © 2017 discoCommando"
+            ]
         ]
 
 
