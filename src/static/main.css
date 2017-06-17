@@ -310,7 +310,7 @@ body {
     position: -moz-sticky;
     position: -ms-sticky;
     position: -o-sticky;
-    top: 10px;
+    top: 256px;
     z-index: 999;
     /*left: 50%;*/
 }
@@ -556,4 +556,18 @@ body {
 .footer a {
     color: rgb(250,250,250);
     
+}
+
+#player {
+    /*margin: 10 auto;*/
+    margin-left: 31px;
+    /*position: abs;*/
+    position: sticky;
+    position: -webkit-sticky;
+    position: -moz-sticky;
+    position: -ms-sticky;
+    position: -o-sticky;
+    top: 10px;
+    z-index: 999;
+    text-align: center;
 }
