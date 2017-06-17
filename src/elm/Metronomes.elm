@@ -223,12 +223,6 @@ update msg model =
                                         |> Return.singleton
 
                                 metronomeModel :: rest ->
-                                    --    Metronome.update Metronome.Start metronomeModel
-                                    --        |> Return.mapCmd (MetronomeMsg 0)
-                                    --        |> Return.map
-                                    --            (\changedMetronomeModel ->
-                                    --                { model | status = Working { previous = [], actual = changedMetronomeModel, next = List.map Metronome.makeFinished rest, paused = False } }
-                                    --            )
                                     { model | status = Working { workingStatus = WaitingForPlay, previous = [], actual = metronomeModel, next = List.map Metronome.makeFinished rest } }
                                         |> Basics.flip Return.return (youtubePlay ())
 
@@ -383,12 +377,6 @@ update msg model =
                         Paused ->
                             case msg of
                                 Start ->
-                                    --Metronome.update Metronome.Start ws.actual
-                                    --    |> Return.mapCmd (MetronomeMsg <| getActualIndex ws)
-                                    --    |> Return.map
-                                    --        (\metronomeModel ->
-                                    --            { model | status = Working { ws | actual = metronomeModel, paused = False } }
-                                    --        )
                                     { model | status = Working { ws | workingStatus = WaitingForPlay } }
                                         |> Basics.flip Return.return (youtubePlay ())
 
@@ -509,8 +497,8 @@ view model =
             , p [] []
             , input [ type_ "text", onInput ChangeArtist, value model.artist ] []
             ]
-        , Html.div [ id "player" ] []
         , Html.div [ class "info" ] [ input [ type_ "text" ] [] ]
+        , Html.div [ id "player" ] []
         , Html.div [ class "control-buttons" ]
             [ Html.button
                 (case model.status of
