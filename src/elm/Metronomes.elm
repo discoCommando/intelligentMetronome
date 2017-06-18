@@ -13,6 +13,8 @@ import Platform.Sub exposing (..)
 import ViewBlock
 import Dom
 import Task
+import Regex
+import Http
 
 
 type WorkingStatus
@@ -34,11 +36,25 @@ type Status
     | Working WorkingState
 
 
+type alias YoutubeState =
+    { youtubeId : String
+    , url : String
+    , startFrom : Float
+    , startFromString : String
+    }
+
+
+type YoutubeStatus
+    = NotExisting
+    | Existing YoutubeState
+
+
 type alias Model =
     { metronomes : List Metronome.Model
     , track : String
     , artist : String
     , status : Status
+    , youtubeStatus : YoutubeStatus
     }
 
 
@@ -65,6 +81,7 @@ songToModel song =
     , track = song.track
     , artist = song.artist
     , metronomes = List.map mapBlock song.blocks
+    , youtubeStatus = NotExisting
     }
 
 
@@ -122,6 +139,9 @@ type Msg
     | ChangeArtist String
     | YoutubePlaying
     | YoutubePaused
+    | YoutubeButtonClick
+    | YoutubeUrlChange String
+    | YoutubeStartFromChange String
 
 
 insert : Int -> a -> List a -> List a
@@ -201,242 +221,353 @@ getActualIndex ws =
     List.length ws.previous
 
 
+parseYoutubeId : String -> Maybe String
+parseYoutubeId url =
+    case Debug.log "a" <| (Regex.find (Regex.All) (Debug.log "x" <| Regex.regex "^.*((youtu.be\\/)|(v\\/)|(\\/u\\/\\w\\/)|(embed\\/)|(watch\\?))\\??v?=?([^#\\&\\?]*).*") url) of
+        [] ->
+            Nothing
+
+        x :: _ ->
+            case at 6 x.submatches of
+                Nothing ->
+                    Nothing
+
+                Just x ->
+                    case x of
+                        Just x ->
+                            if (String.length x == 11) then
+                                Just x
+                            else
+                                Nothing
+
+                        Nothing ->
+                            Nothing
+
+
 update : Msg -> Model -> Return Msg Model
 update msg model =
-    case msg of
-        ChangeTrack s ->
-            { model | track = s }
-                |> Return.singleton
+    let
+        youtubeReady =
+            case model.youtubeStatus of
+                Existing ys ->
+                    True
 
-        ChangeArtist s ->
-            { model | artist = s }
-                |> Return.singleton
+                _ ->
+                    False
 
-        _ ->
-            case model.status of
-                Idle ->
-                    case msg of
-                        Start ->
-                            case model.metronomes of
-                                [] ->
-                                    model
-                                        |> Return.singleton
+        youtubeCmd cmd =
+            if youtubeReady then
+                cmd
+            else
+                Platform.Cmd.none
+    in
+        case msg of
+            ChangeTrack s ->
+                { model | track = s }
+                    |> Return.singleton
 
-                                metronomeModel :: rest ->
-                                    { model | status = Working { workingStatus = WaitingForPlay, previous = [], actual = metronomeModel, next = List.map Metronome.makeFinished rest } }
-                                        |> Basics.flip Return.return (youtubePlay ())
+            ChangeArtist s ->
+                { model | artist = s }
+                    |> Return.singleton
 
-                        YoutubePlaying ->
-                            case model.metronomes of
-                                [] ->
-                                    model
-                                        |> Return.singleton
+            _ ->
+                case model.status of
+                    Idle ->
+                        case msg of
+                            Start ->
+                                case model.metronomes of
+                                    [] ->
+                                        model
+                                            |> Return.singleton
 
-                                metronomeModel :: rest ->
-                                    Metronome.update Metronome.Start metronomeModel
-                                        |> Return.mapCmd (MetronomeMsg 0)
-                                        |> Return.map
-                                            (\changedMetronomeModel ->
-                                                { model | status = Working { workingStatus = Playing, previous = [], actual = changedMetronomeModel, next = List.map Metronome.makeFinished rest } }
-                                            )
+                                    metronomeModel :: rest ->
+                                        case model.youtubeStatus of
+                                            Existing ys ->
+                                                { model | status = Working { workingStatus = WaitingForPlay, previous = [], actual = metronomeModel, next = List.map Metronome.makeFinished rest } }
+                                                    |> Basics.flip Return.return (youtubePlay <| Just ys.startFrom)
 
-                        Next ->
-                            case model.metronomes of
-                                [] ->
-                                    model |> Return.singleton
+                                            NotExisting ->
+                                                Metronome.update Metronome.Start metronomeModel
+                                                    |> Return.mapCmd (MetronomeMsg 0)
+                                                    |> Return.map
+                                                        (\changedMetronomeModel ->
+                                                            { model | status = Working { workingStatus = Playing, previous = [], actual = changedMetronomeModel, next = List.map Metronome.makeFinished rest } }
+                                                        )
 
-                                metronomeModel :: rest ->
-                                    Metronome.update Metronome.Start metronomeModel
-                                        |> Return.dropCmd
-                                        |> Return.mapCmd (MetronomeMsg 0)
-                                        |> Return.map
-                                            (\changedMetronomeModel ->
-                                                { model | status = Working { previous = [], actual = changedMetronomeModel, next = List.map Metronome.makeFinished rest, workingStatus = Paused } }
-                                            )
-                                        |> Return.andThen (\m -> update Next m)
+                            YoutubePlaying ->
+                                case model.metronomes of
+                                    [] ->
+                                        model
+                                            |> Return.singleton
 
-                        MetronomeMsg i msg ->
-                            case at i model.metronomes of
-                                Nothing ->
-                                    model
-                                        |> Return.singleton
+                                    metronomeModel :: rest ->
+                                        Metronome.update Metronome.Start metronomeModel
+                                            |> Return.mapCmd (MetronomeMsg 0)
+                                            |> Return.map
+                                                (\changedMetronomeModel ->
+                                                    { model | status = Working { workingStatus = Playing, previous = [], actual = changedMetronomeModel, next = List.map Metronome.makeFinished rest } }
+                                                )
 
-                                Just metronomeModel ->
-                                    case msg of
-                                        Metronome.ViewMsg (ViewBlock.RemoveAll) ->
-                                            { model | metronomes = remove i model.metronomes }
-                                                |> Return.singleton
+                            Next ->
+                                case model.metronomes of
+                                    [] ->
+                                        model |> Return.singleton
 
-                                        _ ->
-                                            let
-                                                ( changedMetronomeModel, metronomeCmd ) =
-                                                    Metronome.update msg metronomeModel
-                                            in
-                                                { model | metronomes = insert i changedMetronomeModel model.metronomes }
+                                    metronomeModel :: rest ->
+                                        Metronome.update Metronome.Start metronomeModel
+                                            |> Return.dropCmd
+                                            |> Return.mapCmd (MetronomeMsg 0)
+                                            |> Return.map
+                                                (\changedMetronomeModel ->
+                                                    { model | status = Working { previous = [], actual = changedMetronomeModel, next = List.map Metronome.makeFinished rest, workingStatus = Paused } }
+                                                )
+                                            |> Return.andThen (\m -> update Next m)
+
+                            MetronomeMsg i msg ->
+                                case at i model.metronomes of
+                                    Nothing ->
+                                        model
+                                            |> Return.singleton
+
+                                    Just metronomeModel ->
+                                        case msg of
+                                            Metronome.ViewMsg (ViewBlock.RemoveAll) ->
+                                                { model | metronomes = remove i model.metronomes }
                                                     |> Return.singleton
-                                                    |> Return.command (Platform.Cmd.map (MetronomeMsg i) metronomeCmd)
-
-                        AddBlock i ->
-                            { model | metronomes = addAt i Metronome.emptyModel model.metronomes }
-                                |> Return.singleton
-
-                        _ ->
-                            model |> Return.singleton
-
-                Working ws ->
-                    case ws.workingStatus of
-                        Playing ->
-                            case msg of
-                                MetronomeMsg i msg ->
-                                    case atWs i ws of
-                                        Nothing ->
-                                            model
-                                                |> Return.singleton
-
-                                        Just metronomeModel ->
-                                            let
-                                                ( changedMetronomeModel, metronomeCmd ) =
-                                                    Metronome.update msg metronomeModel
-                                            in
-                                                { model | status = Working <| insertWs i changedMetronomeModel ws }
-                                                    |> Return.singleton
-                                                    |> Return.command (Platform.Cmd.map (MetronomeMsg i) metronomeCmd)
-
-                                TickMsg msg ->
-                                    let
-                                        ( changedMetronomeModel, metronomeCmd ) =
-                                            Metronome.update msg ws.actual
-                                    in
-                                        case changedMetronomeModel.status of
-                                            Metronome.Finished ->
-                                                case ws.next of
-                                                    [] ->
-                                                        { model | status = Idle }
-                                                            |> Return.singleton
-                                                            |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws) metronomeCmd)
-                                                            |> Return.command (youtubeStop ())
-
-                                                    x :: xs ->
-                                                        let
-                                                            ( changedX, xCmd ) =
-                                                                Metronome.update Metronome.Start x
-                                                        in
-                                                            { model | status = Working { ws | previous = ws.previous ++ [ changedMetronomeModel ], actual = changedX, next = xs } }
-                                                                |> Return.singleton
-                                                                |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws) metronomeCmd)
-                                                                |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws + 1) xCmd)
-                                                                |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
 
                                             _ ->
-                                                { model | status = Working { ws | actual = changedMetronomeModel } }
+                                                let
+                                                    ( changedMetronomeModel, metronomeCmd ) =
+                                                        Metronome.update msg metronomeModel
+                                                in
+                                                    { model | metronomes = insert i changedMetronomeModel model.metronomes }
+                                                        |> Return.singleton
+                                                        |> Return.command (Platform.Cmd.map (MetronomeMsg i) metronomeCmd)
+
+                            AddBlock i ->
+                                { model | metronomes = addAt i Metronome.emptyModel model.metronomes }
+                                    |> Return.singleton
+
+                            YoutubeButtonClick ->
+                                case model.youtubeStatus of
+                                    NotExisting ->
+                                        { model | youtubeStatus = Existing <| YoutubeState "" "" 0 "0" }
+                                            |> Return.singleton
+                                            |> Return.command (youtubeInit ())
+
+                                    Existing ys ->
+                                        { model | youtubeStatus = NotExisting }
+                                            |> Return.singleton
+                                            |> Return.command (youtubeHide ())
+
+                            _ ->
+                                case model.youtubeStatus of
+                                    NotExisting ->
+                                        model |> Return.singleton
+
+                                    Existing ys ->
+                                        case msg of
+                                            YoutubeUrlChange url ->
+                                                (case parseYoutubeId url of
+                                                    Nothing ->
+                                                        ys |> Return.singleton
+
+                                                    Just id ->
+                                                        { ys | youtubeId = id }
+                                                            |> Return.singleton
+                                                )
+                                                    |> Return.andThen
+                                                        (\ys ->
+                                                            if (String.length ys.youtubeId == 11) then
+                                                                Return.return ys <| youtubeCueVideo ys.youtubeId
+                                                            else
+                                                                ys |> Return.singleton
+                                                        )
+                                                    |> Return.map
+                                                        (\ys -> { model | youtubeStatus = Existing { ys | url = url } })
+
+                                            YoutubeStartFromChange sf ->
+                                                (case String.toFloat sf of
+                                                    Ok startFrom ->
+                                                        if (startFrom >= 0) then
+                                                            { ys | startFrom = startFrom }
+                                                        else
+                                                            ys
+
+                                                    _ ->
+                                                        ys
+                                                )
                                                     |> Return.singleton
-                                                    |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws) metronomeCmd)
+                                                    |> Return.map
+                                                        (\ys -> { model | youtubeStatus = Existing { ys | startFromString = sf } })
 
-                                Pause ->
-                                    Metronome.update Metronome.Pause ws.actual
-                                        |> Return.mapCmd (MetronomeMsg <| getActualIndex ws)
-                                        |> Return.map
-                                            (\metronomeModel ->
-                                                { model | status = Working { ws | actual = metronomeModel, workingStatus = Paused } }
-                                            )
-                                        |> Return.command (youtubePause ())
+                                            _ ->
+                                                model |> Return.singleton
 
-                                YoutubePaused ->
-                                    Metronome.update Metronome.Pause ws.actual
-                                        |> Return.mapCmd (MetronomeMsg <| getActualIndex ws)
-                                        |> Return.map
-                                            (\metronomeModel ->
-                                                { model | status = Working { ws | actual = metronomeModel, workingStatus = Paused } }
-                                            )
-
-                                Next ->
-                                    case ws.next of
-                                        [] ->
-                                            { model | status = Idle }
-                                                |> Return.singleton
-                                                |> Return.command (youtubeStop ())
-
-                                        x :: xs ->
-                                            Metronome.update Metronome.Start x
-                                                |> Return.mapCmd (MetronomeMsg <| getActualIndex ws + 1)
-                                                |> Return.map
-                                                    (\metronomeModel ->
-                                                        { model | status = Working { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = metronomeModel, next = xs } }
-                                                    )
-                                                |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
-
-                                Stop ->
-                                    { model | status = Idle }
-                                        |> Return.singleton
-                                        |> Return.command (youtubeStop ())
-
-                                _ ->
-                                    model
-                                        |> Return.singleton
-
-                        Paused ->
-                            case msg of
-                                Start ->
-                                    { model | status = Working { ws | workingStatus = WaitingForPlay } }
-                                        |> Basics.flip Return.return (youtubePlay ())
-
-                                YoutubePlaying ->
-                                    Metronome.update Metronome.Start ws.actual
-                                        |> Return.mapCmd (MetronomeMsg <| getActualIndex ws)
-                                        |> Return.map
-                                            (\metronomeModel ->
-                                                { model | status = Working { ws | actual = metronomeModel, workingStatus = Playing } }
-                                            )
-
-                                Stop ->
-                                    { model | status = Idle }
-                                        |> Return.singleton
-                                        |> Return.command (youtubeStop ())
-
-                                Next ->
-                                    case ws.next of
-                                        [] ->
-                                            { model | status = Idle }
-                                                |> Return.singleton
-                                                |> Return.command (youtubeStop ())
-
-                                        x :: xs ->
-                                            { model | status = Working { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = Metronome.makePaused x, next = xs, workingStatus = Paused } }
-                                                |> Return.singleton
-                                                |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
-
-                                MetronomeMsg i msg ->
-                                    case atWs i ws of
-                                        Nothing ->
-                                            model
-                                                |> Return.singleton
-
-                                        Just metronomeModel ->
-                                            let
-                                                ( changedMetronomeModel, metronomeCmd ) =
-                                                    Metronome.update msg metronomeModel
-                                            in
-                                                { model | status = Working <| insertWs i changedMetronomeModel ws }
+                    Working ws ->
+                        case ws.workingStatus of
+                            Playing ->
+                                case msg of
+                                    MetronomeMsg i msg ->
+                                        case atWs i ws of
+                                            Nothing ->
+                                                model
                                                     |> Return.singleton
-                                                    |> Return.command (Platform.Cmd.map (MetronomeMsg i) metronomeCmd)
 
-                                _ ->
-                                    model
-                                        |> Return.singleton
+                                            Just metronomeModel ->
+                                                let
+                                                    ( changedMetronomeModel, metronomeCmd ) =
+                                                        Metronome.update msg metronomeModel
+                                                in
+                                                    { model | status = Working <| insertWs i changedMetronomeModel ws }
+                                                        |> Return.singleton
+                                                        |> Return.command (Platform.Cmd.map (MetronomeMsg i) metronomeCmd)
 
-                        WaitingForPlay ->
-                            case msg of
-                                YoutubePlaying ->
-                                    Metronome.update Metronome.Start ws.actual
-                                        |> Return.mapCmd (MetronomeMsg <| getActualIndex ws)
-                                        |> Return.map
-                                            (\metronomeModel ->
-                                                { model | status = Working { ws | actual = metronomeModel, workingStatus = Playing } }
-                                            )
+                                    TickMsg msg ->
+                                        let
+                                            ( changedMetronomeModel, metronomeCmd ) =
+                                                Metronome.update msg ws.actual
+                                        in
+                                            case changedMetronomeModel.status of
+                                                Metronome.Finished ->
+                                                    case ws.next of
+                                                        [] ->
+                                                            { model | status = Idle }
+                                                                |> Return.singleton
+                                                                |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws) metronomeCmd)
+                                                                |> Return.command (youtubeCmd <| youtubeStop ())
 
-                                _ ->
-                                    model
-                                        |> Return.singleton
+                                                        x :: xs ->
+                                                            let
+                                                                ( changedX, xCmd ) =
+                                                                    Metronome.update Metronome.Start x
+                                                            in
+                                                                { model | status = Working { ws | previous = ws.previous ++ [ changedMetronomeModel ], actual = changedX, next = xs } }
+                                                                    |> Return.singleton
+                                                                    |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws) metronomeCmd)
+                                                                    |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws + 1) xCmd)
+                                                                    |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
+
+                                                _ ->
+                                                    { model | status = Working { ws | actual = changedMetronomeModel } }
+                                                        |> Return.singleton
+                                                        |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws) metronomeCmd)
+
+                                    Pause ->
+                                        Metronome.update Metronome.Pause ws.actual
+                                            |> Return.mapCmd (MetronomeMsg <| getActualIndex ws)
+                                            |> Return.map
+                                                (\metronomeModel ->
+                                                    { model | status = Working { ws | actual = metronomeModel, workingStatus = Paused } }
+                                                )
+                                            |> Return.command (youtubeCmd <| youtubePause ())
+
+                                    YoutubePaused ->
+                                        Metronome.update Metronome.Pause ws.actual
+                                            |> Return.mapCmd (MetronomeMsg <| getActualIndex ws)
+                                            |> Return.map
+                                                (\metronomeModel ->
+                                                    { model | status = Working { ws | actual = metronomeModel, workingStatus = Paused } }
+                                                )
+
+                                    Next ->
+                                        case ws.next of
+                                            [] ->
+                                                { model | status = Idle }
+                                                    |> Return.singleton
+                                                    |> Return.command (youtubeCmd <| youtubeStop ())
+
+                                            x :: xs ->
+                                                Metronome.update Metronome.Start x
+                                                    |> Return.mapCmd (MetronomeMsg <| getActualIndex ws + 1)
+                                                    |> Return.map
+                                                        (\metronomeModel ->
+                                                            { model | status = Working { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = metronomeModel, next = xs } }
+                                                        )
+                                                    |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
+
+                                    Stop ->
+                                        { model | status = Idle }
+                                            |> Return.singleton
+                                            |> Return.command (youtubeCmd <| youtubeStop ())
+
+                                    _ ->
+                                        model
+                                            |> Return.singleton
+
+                            Paused ->
+                                case msg of
+                                    Start ->
+                                        case model.youtubeStatus of
+                                            Existing ys ->
+                                                { model | status = Working { ws | workingStatus = WaitingForPlay } }
+                                                    |> Basics.flip Return.return (youtubePlay Nothing)
+
+                                            NotExisting ->
+                                                Metronome.update Metronome.Start ws.actual
+                                                    |> Return.mapCmd (MetronomeMsg <| getActualIndex ws)
+                                                    |> Return.map
+                                                        (\metronomeModel ->
+                                                            { model | status = Working { ws | actual = metronomeModel, workingStatus = Playing } }
+                                                        )
+
+                                    YoutubePlaying ->
+                                        Metronome.update Metronome.Start ws.actual
+                                            |> Return.mapCmd (MetronomeMsg <| getActualIndex ws)
+                                            |> Return.map
+                                                (\metronomeModel ->
+                                                    { model | status = Working { ws | actual = metronomeModel, workingStatus = Playing } }
+                                                )
+
+                                    Stop ->
+                                        { model | status = Idle }
+                                            |> Return.singleton
+                                            |> Return.command (youtubeCmd <| youtubeStop ())
+
+                                    Next ->
+                                        case ws.next of
+                                            [] ->
+                                                { model | status = Idle }
+                                                    |> Return.singleton
+                                                    |> Return.command (youtubeCmd <| youtubeStop ())
+
+                                            x :: xs ->
+                                                { model | status = Working { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = Metronome.makePaused x, next = xs, workingStatus = Paused } }
+                                                    |> Return.singleton
+                                                    |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
+
+                                    MetronomeMsg i msg ->
+                                        case atWs i ws of
+                                            Nothing ->
+                                                model
+                                                    |> Return.singleton
+
+                                            Just metronomeModel ->
+                                                let
+                                                    ( changedMetronomeModel, metronomeCmd ) =
+                                                        Metronome.update msg metronomeModel
+                                                in
+                                                    { model | status = Working <| insertWs i changedMetronomeModel ws }
+                                                        |> Return.singleton
+                                                        |> Return.command (Platform.Cmd.map (MetronomeMsg i) metronomeCmd)
+
+                                    _ ->
+                                        model
+                                            |> Return.singleton
+
+                            WaitingForPlay ->
+                                case msg of
+                                    YoutubePlaying ->
+                                        Metronome.update Metronome.Start ws.actual
+                                            |> Return.mapCmd (MetronomeMsg <| getActualIndex ws)
+                                            |> Return.map
+                                                (\metronomeModel ->
+                                                    { model | status = Working { ws | actual = metronomeModel, workingStatus = Playing } }
+                                                )
+
+                                    _ ->
+                                        model
+                                            |> Return.singleton
 
 
 viewMetronomes : Model -> Html Msg
@@ -489,16 +620,37 @@ view model =
     div []
         [ Html.div [ class "title" ] [ text "Intelligent Metronome" ]
         , Html.div [ class "info" ]
-            [ text "Track"
-            , p [] []
-            , input [ type_ "text", onInput ChangeTrack, value model.track ] []
-            , p [] []
-            , text "Artist"
-            , p [] []
-            , input [ type_ "text", onInput ChangeArtist, value model.artist ] []
-            ]
-        , Html.div [ class "info" ] [ input [ type_ "text" ] [] ]
-        , Html.div [ id "player" ] []
+            ([ text "Track"
+             , p [] []
+             , input [ type_ "text", onInput ChangeTrack, value model.track ] []
+             , p [] []
+             , text "Artist"
+             , p [] []
+             , input [ type_ "text", onInput ChangeArtist, value model.artist ] []
+             ]
+                ++ [ text "YouTube"
+                   , p [] []
+                   ]
+                ++ (case model.youtubeStatus of
+                        NotExisting ->
+                            [ button [ class "youtube-button", onClick YoutubeButtonClick ] [ text "Off" ]
+                            ]
+
+                        Existing ys ->
+                            [ button [ class "youtube-button", onClick YoutubeButtonClick ] [ text "On" ]
+                            , p [] []
+                            , text "YouTube Link"
+                            , p [] []
+                            , input [ type_ "text", value ys.url, onInput YoutubeUrlChange ] []
+                            , p [] []
+                            , text "Start from (in seconds)"
+                            , p [] []
+                            , input [ type_ "text", value ys.startFromString, onInput YoutubeStartFromChange ] []
+                            , p [] []
+                            , div [ class "player-empty-space" ] []
+                            ]
+                   )
+            )
         , Html.div [ class "control-buttons" ]
             [ Html.button
                 (case model.status of
@@ -556,7 +708,7 @@ init =
         |> Return.singleton
 
 
-port youtubePlay : () -> Platform.Cmd.Cmd msg
+port youtubePlay : Maybe Float -> Platform.Cmd.Cmd msg
 
 
 port youtubePause : () -> Platform.Cmd.Cmd msg
@@ -569,6 +721,19 @@ port youtubePlaying : (() -> msg) -> Sub msg
 
 
 port youtubePaused : (() -> msg) -> Sub msg
+
+
+port youtubeCueVideo : String -> Cmd msg
+
+
+port youtubeInit : () -> Cmd msg
+
+
+port youtubeHide : () -> Cmd msg
+
+
+
+--port youtubeError :
 
 
 subscriptions : Model -> Sub Msg

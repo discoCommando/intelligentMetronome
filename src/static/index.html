@@ -12,11 +12,13 @@
       var player;
       
     </script>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
   </head>
 
   <body>
-    <!-- <iframe width="420" height="315" src="https://www.youtube.com/embed/XGSy3_Czz8k?enablejsapi=1" onStateChange="f()"></iframe> -->
-    <!-- <div id="player"></div>   -->
+    <div id="player-container"  class="hidden"> 
+      <div id="player"></div>  
+    </div>
     <div id="app"></div>
     <script>
       createjs.Sound.registerSound('audio/lowest.mp3', "Low");
@@ -28,67 +30,42 @@
         createjs.Sound.play(name);
       });
 
-// Callback for when the YouTube iFrame player is ready
       function onYouTubeIframeAPIReady() {
         player = new YT.Player('player', {
           // Set Player height and width
           height: '246',
           width: '437',
-          // Set the id of the video to be played
-          videoId: 'pG7_gceIFL4',
+          videoId: '',
           events: {
             'onReady': onPlayerReady
-            // You can add more event listeners here
           },
           playerVars: {
-            // controls: 0,
-            // disablekb: 1,
+            controls: 0,
+            disablekb: 1,
+            autoplay: 0
           }
         });
       };
 
       function onPlayerReady (){
-        //add onStateChange event handler
         player.addEventListener("onStateChange","onPlayerStateChange");
-
-        //add your own rate listener below:
-
       };
 
       function onPlayerStateChange(event){
-        // Get current state
-        var currentState;
-        if (event.data == YT.PlayerState.ENDED){
-          currentState = "Ended";
-        } 
-        else if (event.data == YT.PlayerState.PLAYING){
-          currentState = "Playing";
+        if (event.data == YT.PlayerState.PLAYING){
           app.ports.youtubePlaying.send(null);
         } 
         else if (event.data == YT.PlayerState.PAUSED){
-          currentState = "Paused";
           app.ports.youtubePaused.send(null);
         }  
-        else if (event.data == YT.PlayerState.BUFFERING){
-          currentState = "Buffering";
-        }
-        else if (event.data == YT.PlayerState.CUED){
-          currentState = "Cued";
-        } else{
-          currentState = "Unknown";
-        }
-
-        currentState += " (" + event.data + ")"
-        // Update video state div
-        // document.getElementById('currentState').innerText = currentState;
-        // alert(currentState);
       };
 
       app.ports.youtubePause.subscribe(function() {
         player.pauseVideo();
       });
 
-      app.ports.youtubePlay.subscribe(function() {
+      app.ports.youtubePlay.subscribe(function(seconds) {
+        if(seconds) { player.seekTo(seconds, true); }
         player.playVideo();
       });
 
@@ -96,6 +73,22 @@
         player.pauseVideo();
         player.seekTo(0, true);
       });
+
+      app.ports.youtubeCueVideo.subscribe(function(id) {
+          player.cueVideoById(id);
+      });
+
+      app.ports.youtubeHide.subscribe(function() {
+        var p = document.getElementById("player-container");
+        p.setAttribute("class", "hidden");
+      });
+
+      app.ports.youtubeInit.subscribe(function() {
+        var p = document.getElementById("player-container");
+        p.setAttribute("class", "");
+      });
+
+      
     </script>
   </body>
 </html>

@@ -310,7 +310,7 @@ body {
     position: -moz-sticky;
     position: -ms-sticky;
     position: -o-sticky;
-    top: 256px;
+    top: 10px;
     z-index: 999;
     /*left: 50%;*/
 }
@@ -522,12 +522,9 @@ body {
 }
 
 .info input {
- border-width: 0px;
+    border-width: 0px;
     text-align: center;
-    /*width: 205px;*/
-    /*position: absolute;*/
     width: 100%;
-    /*margin: 0 auto;*/
     margin-bottom: 20px;
     text-shadow : 0px 1px 5px rgb(60, 60, 60);
     color: rgb(250,250,250);
@@ -558,16 +555,42 @@ body {
     
 }
 
+#player-container {
+    width: 437px;
+    margin: 0 auto;
+    position: absolute;
+    left: 50%;
+    top: 670px;
+}
+
 #player {
-    /*margin: 10 auto;*/
-    margin-left: 31px;
-    /*position: abs;*/
-    position: sticky;
-    position: -webkit-sticky;
-    position: -moz-sticky;
-    position: -ms-sticky;
-    position: -o-sticky;
-    top: 10px;
-    z-index: 999;
-    text-align: center;
+    position: relative;
+    left : -50%;
+}
+
+.player-empty-space {
+    height: 260px;
+}
+
+.hidden {
+    display: none;
+}
+
+.youtube-button {
+    font-size: 50;
+    text-shadow : 0px 1px 4px rgb(20, 20, 20);
+    color : rgb(240, 240, 240);
+    font-weight: bold;
+    background-color:  rgba(230,230,230, 0); 
+    border-width: 0;
+    /*margin-left: -220px;*/
+}
+
+.youtube-button:enabled {
+    cursor: pointer;
+}
+
+.youtube-button:enabled:hover {
+    color: black;
+}
 }
