@@ -631,24 +631,28 @@ view model =
                 ++ [ text "YouTube"
                    , p [] []
                    ]
-                ++ (case model.youtubeStatus of
-                        NotExisting ->
-                            [ button [ class "youtube-button", onClick YoutubeButtonClick ] [ text "Off" ]
-                            ]
+                ++ (let
+                        isIdle =
+                            model.status == Idle
+                    in
+                        case model.youtubeStatus of
+                            NotExisting ->
+                                [ button [ class "youtube-button", onClick YoutubeButtonClick, disabled <| Basics.not isIdle ] [ text "Off" ]
+                                ]
 
-                        Existing ys ->
-                            [ button [ class "youtube-button", onClick YoutubeButtonClick ] [ text "On" ]
-                            , p [] []
-                            , text "YouTube Link"
-                            , p [] []
-                            , input [ type_ "text", value ys.url, onInput YoutubeUrlChange ] []
-                            , p [] []
-                            , text "Start from (in seconds)"
-                            , p [] []
-                            , input [ type_ "text", value ys.startFromString, onInput YoutubeStartFromChange ] []
-                            , p [] []
-                            , div [ class "player-empty-space" ] []
-                            ]
+                            Existing ys ->
+                                [ button [ class "youtube-button", onClick YoutubeButtonClick, disabled <| Basics.not isIdle ] [ text "On" ]
+                                , p [] []
+                                , text "YouTube Link"
+                                , p [] []
+                                , input [ type_ "text", value ys.url, onInput YoutubeUrlChange, disabled <| Basics.not isIdle ] []
+                                , p [] []
+                                , text "Start from (in seconds)"
+                                , p [] []
+                                , input [ type_ "text", value ys.startFromString, onInput YoutubeStartFromChange, disabled <| Basics.not isIdle ] []
+                                , p [] []
+                                , div [ class "player-empty-space" ] []
+                                ]
                    )
             )
         , Html.div [ class "control-buttons" ]
