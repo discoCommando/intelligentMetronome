@@ -113,70 +113,10 @@ modelToSong model =
     }
 
 
-exampleSong : Types.Song
-exampleSong =
+initialSong : Json.Decode.Value -> Types.Song
+initialSong v =
     case
-        Json.Decode.decodeString Types.decodeSong """
-            {
-            "track": "Unleashed",
-            "artist": "Epica",
-            "blocks": [
-                {
-                  "tempo" : 94,
-                  "accents": [
-                    3
-                  ],
-                  "maybeCount" : 9
-                },
-                {
-                  "tempo" : 188,
-                  "accents": [
-                    6, 6, 2, 6
-                  ],
-                  "maybeCount" : 2
-                },
-                {
-                  "tempo" : 188,
-                  "accents": [
-                    6, 2, 6, 6
-                  ],
-                  "maybeCount" : 1
-                },
-                {
-                  "tempo" : 188,
-                  "accents": [
-                    6
-                  ],
-                  "maybeCount" : 148
-                },
-                {
-                  "tempo" : 188,
-                  "accents": [
-                    6, 6, 2, 6
-                  ],
-                  "maybeCount" : 2
-                },
-                {
-                  "tempo" : 188,
-                  "accents": [
-                    6, 2, 6, 6
-                  ],
-                  "maybeCount" : 1
-                },
-                {
-                  "tempo" : 188,
-                  "accents": [
-                    6
-                  ],
-                  "maybeCount" : 3
-                }
-            ],
-            "youtube" : {
-                "id" : "eNGzltK_tlc",
-                "startFrom": 0.89
-            }
-        }
-"""
+        Json.Decode.decodeValue Types.decodeSong v
     of
         Result.Ok a ->
             a
@@ -333,11 +273,6 @@ getNextTime startingTime list =
 
             False ->
                 Nothing
-
-
-
---|> List.sum
---|> (+) (Time.second * startingTime)
 
 
 update : Msg -> Model -> Return Msg Model
@@ -855,9 +790,10 @@ view model =
         ]
 
 
-init : Return Msg Model
-init =
-    songToModel exampleSong
+init : Json.Decode.Value -> Return Msg Model
+init v =
+    initialSong v
+        |> songToModel
         |> Return.singleton
 
 
@@ -891,10 +827,6 @@ port youtubeHide : () -> Cmd msg
 port youtubeSeekTo : Float -> Cmd msg
 
 
-
---port youtubeError :
-
-
 subscriptions : Model -> Sub Msg
 subscriptions model =
     [ case model.status of
@@ -911,7 +843,7 @@ subscriptions model =
 
 
 main =
-    Html.program
+    Html.programWithFlags
         { init = init
         , view = view
         , update = update

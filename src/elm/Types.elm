@@ -26,7 +26,7 @@ decodeBlock =
     Json.Decode.map3 Block
         (field "tempo" Json.Decode.int)
         (field "accents" <| Json.Decode.list Json.Decode.int)
-        (field "maybeCount" <| Json.Decode.maybe Json.Decode.int)
+        (Json.Decode.maybe <| field "maybeCount" Json.Decode.int)
 
 
 encodeBlock : Block -> Json.Encode.Value
@@ -65,7 +65,7 @@ decodeSong =
         (field "track" Json.Decode.string)
         (field "artist" Json.Decode.string)
         (field "blocks" <| Json.Decode.list decodeBlock)
-        (field "youtube" <| Json.Decode.maybe decodeYoutubeInfo)
+        (Json.Decode.maybe <| field "youtube" decodeYoutubeInfo)
 
 
 encodeYoutubeInfo : YoutubeInfo -> Json.Encode.Value

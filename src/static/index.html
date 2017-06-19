@@ -24,7 +24,65 @@
       createjs.Sound.registerSound('audio/lowest.mp3', "Low");
       createjs.Sound.registerSound('audio/low.mp3', "High");
 
-      app = Elm.Metronomes.embed(document.getElementById("app"));
+      app = Elm.Metronomes.embed(document.getElementById("app"), {
+                    "track": "Unleashed",
+                    "artist": "Epica",
+                    "blocks": [
+                        {
+                          "tempo" : 94,
+                          "accents": [
+                            3
+                          ],
+                          "maybeCount" : 9
+                        },
+                        {
+                          "tempo" : 188,
+                          "accents": [
+                            6, 6, 2, 6
+                          ],
+                          "maybeCount" : 2
+                        },
+                        {
+                          "tempo" : 188,
+                          "accents": [
+                            6, 2, 6, 6
+                          ],
+                          "maybeCount" : 1
+                        },
+                        {
+                          "tempo" : 188,
+                          "accents": [
+                            6
+                          ],
+                          "maybeCount" : 148
+                        },
+                        {
+                          "tempo" : 188,
+                          "accents": [
+                            6, 6, 2, 6
+                          ],
+                          "maybeCount" : 2
+                        },
+                        {
+                          "tempo" : 188,
+                          "accents": [
+                            6, 2, 6, 6
+                          ],
+                          "maybeCount" : 1
+                        },
+                        {
+                          "tempo" : 188,
+                          "accents": [
+                            6
+                          ],
+                          "maybeCount" : 3
+                        }
+                    ],
+                    "youtube" : {
+                        "id" : "eNGzltK_tlc",
+                        "startFrom": 0.89
+                    }
+                });
       
       app.ports.click.subscribe(function(name) {
         createjs.Sound.play(name);
