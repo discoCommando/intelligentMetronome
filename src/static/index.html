@@ -47,6 +47,10 @@
         });
       };
 
+      // setTimeout(function() {
+      //   player.seekTo(30, true);
+      // }, 10000);
+
       function onPlayerReady (){
         player.addEventListener("onStateChange","onPlayerStateChange");
       };
@@ -88,6 +92,10 @@
         p.setAttribute("class", "");
       });
 
+      app.ports.youtubeSeekTo.subscribe(function(seconds) {
+        player.pauseVideo();
+        player.seekTo(seconds, true);
+      });
       
     </script>
   </body>

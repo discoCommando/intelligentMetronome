@@ -98,22 +98,57 @@ exampleSong =
     case
         Json.Decode.decodeString Types.decodeSong """
             {
-            "track": "Song",
-            "artist": "Test",
+            "track": "Unleashed",
+            "artist": "Epica",
             "blocks": [
                 {
-                  "tempo" : 120,
+                  "tempo" : 94,
                   "accents": [
-                    2, 3
+                    3
                   ],
-                  "maybeCount" : 3
+                  "maybeCount" : 9
                 },
                 {
-                  "tempo" : 200,
+                  "tempo" : 188,
                   "accents": [
-                    2, 3, 2, 4
+                    6, 6, 2, 6
                   ],
-                  "maybeCount" : 5
+                  "maybeCount" : 2
+                },
+                {
+                  "tempo" : 188,
+                  "accents": [
+                    6, 2, 6, 6
+                  ],
+                  "maybeCount" : 1
+                },
+                {
+                  "tempo" : 188,
+                  "accents": [
+                    6
+                  ],
+                  "maybeCount" : 148
+                },
+                {
+                  "tempo" : 188,
+                  "accents": [
+                    6, 6, 2, 6
+                  ],
+                  "maybeCount" : 2
+                },
+                {
+                  "tempo" : 188,
+                  "accents": [
+                    6, 2, 6, 6
+                  ],
+                  "maybeCount" : 1
+                },
+                {
+                  "tempo" : 188,
+                  "accents": [
+                    6
+                  ],
+                  "maybeCount" : 3
                 }
             ]
         }
@@ -223,7 +258,7 @@ getActualIndex ws =
 
 parseYoutubeId : String -> Maybe String
 parseYoutubeId url =
-    case Debug.log "a" <| (Regex.find (Regex.All) (Debug.log "x" <| Regex.regex "^.*((youtu.be\\/)|(v\\/)|(\\/u\\/\\w\\/)|(embed\\/)|(watch\\?))\\??v?=?([^#\\&\\?]*).*") url) of
+    case (Regex.find (Regex.All) (Regex.regex "^.*((youtu.be\\/)|(v\\/)|(\\/u\\/\\w\\/)|(embed\\/)|(watch\\?))\\??v?=?([^#\\&\\?]*).*") url) of
         [] ->
             Nothing
 
@@ -242,6 +277,42 @@ parseYoutubeId url =
 
                         Nothing ->
                             Nothing
+
+
+getNextTime : Float -> List Metronome.Model -> Maybe Time.Time
+getNextTime startingTime list =
+    let
+        blockToTimes =
+            list
+                |> List.map .block
+                |> List.map Metronome.blockToTime
+    in
+        case
+            blockToTimes
+                |> List.all ViewBlock.isJust
+        of
+            True ->
+                blockToTimes
+                    |> List.map
+                        (\s ->
+                            case s of
+                                Just a ->
+                                    a
+
+                                Nothing ->
+                                    0
+                        )
+                    |> List.sum
+                    |> (+) (Time.second * startingTime)
+                    |> Just
+
+            False ->
+                Nothing
+
+
+
+--|> List.sum
+--|> (+) (Time.second * startingTime)
 
 
 update : Msg -> Model -> Return Msg Model
@@ -482,9 +553,33 @@ update msg model =
                                                     |> Return.mapCmd (MetronomeMsg <| getActualIndex ws + 1)
                                                     |> Return.map
                                                         (\metronomeModel ->
-                                                            { model | status = Working { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = metronomeModel, next = xs } }
+                                                            { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = metronomeModel, next = xs }
                                                         )
                                                     |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
+                                                    |> Return.andThen
+                                                        (\ws ->
+                                                            case model.youtubeStatus of
+                                                                NotExisting ->
+                                                                    ws |> Return.singleton
+
+                                                                Existing ys ->
+                                                                    case
+                                                                        ws.previous
+                                                                            |> getNextTime ys.startFrom
+                                                                    of
+                                                                        Just x ->
+                                                                            x
+                                                                                |> Time.inSeconds
+                                                                                |> youtubeSeekTo
+                                                                                |> Return.return ws
+
+                                                                        Nothing ->
+                                                                            ws |> Return.singleton
+                                                        )
+                                                    |> Return.map
+                                                        (\ws ->
+                                                            { model | status = Working ws }
+                                                        )
 
                                     Stop ->
                                         { model | status = Idle }
@@ -532,9 +627,33 @@ update msg model =
                                                     |> Return.command (youtubeCmd <| youtubeStop ())
 
                                             x :: xs ->
-                                                { model | status = Working { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = Metronome.makePaused x, next = xs, workingStatus = Paused } }
+                                                { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = Metronome.makePaused x, next = xs, workingStatus = Paused }
                                                     |> Return.singleton
                                                     |> Return.command (Task.attempt (Basics.always Focus) <| Dom.focus "actual")
+                                                    |> Return.andThen
+                                                        (\ws ->
+                                                            case model.youtubeStatus of
+                                                                NotExisting ->
+                                                                    ws |> Return.singleton
+
+                                                                Existing ys ->
+                                                                    case
+                                                                        ws.previous
+                                                                            |> getNextTime ys.startFrom
+                                                                    of
+                                                                        Just x ->
+                                                                            x
+                                                                                |> Time.inSeconds
+                                                                                |> youtubeSeekTo
+                                                                                |> Return.return ws
+
+                                                                        Nothing ->
+                                                                            ws |> Return.singleton
+                                                        )
+                                                    |> Return.map
+                                                        (\ws ->
+                                                            { model | status = Working ws }
+                                                        )
 
                                     MetronomeMsg i msg ->
                                         case atWs i ws of
@@ -734,6 +853,9 @@ port youtubeInit : () -> Cmd msg
 
 
 port youtubeHide : () -> Cmd msg
+
+
+port youtubeSeekTo : Float -> Cmd msg
 
 
 

@@ -467,6 +467,24 @@ emptyModel =
     }
 
 
+blockToTime : Types.Block -> Maybe Time.Time
+blockToTime block =
+    case block.maybeCount of
+        Nothing ->
+            Nothing
+
+        Just count ->
+            ((count
+                * List.sum block.accents
+                * 60000
+                |> Basics.toFloat
+                |> (*) Time.millisecond
+             )
+                / (block.tempo |> Basics.toFloat)
+            )
+                |> Just
+
+
 port click : String -> Platform.Cmd.Cmd msg
 
 
