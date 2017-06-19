@@ -38,19 +38,42 @@ encodeBlock record =
         ]
 
 
+type alias YoutubeInfo =
+    { id : String
+    , startFrom : Float
+    }
+
+
 type alias Song =
     { track : String
     , artist : String
     , blocks : List Block
+    , youtube : Maybe YoutubeInfo
     }
+
+
+decodeYoutubeInfo : Json.Decode.Decoder YoutubeInfo
+decodeYoutubeInfo =
+    Json.Decode.map2 YoutubeInfo
+        (field "id" Json.Decode.string)
+        (field "startFrom" Json.Decode.float)
 
 
 decodeSong : Json.Decode.Decoder Song
 decodeSong =
-    Json.Decode.map3 Song
+    Json.Decode.map4 Song
         (field "track" Json.Decode.string)
         (field "artist" Json.Decode.string)
         (field "blocks" <| Json.Decode.list decodeBlock)
+        (field "youtube" <| Json.Decode.maybe decodeYoutubeInfo)
+
+
+encodeYoutubeInfo : YoutubeInfo -> Json.Encode.Value
+encodeYoutubeInfo ytinfo =
+    Json.Encode.object
+        [ ( "id", Json.Encode.string ytinfo.id )
+        , ( "startFrom", Json.Encode.float ytinfo.startFrom )
+        ]
 
 
 encodeSong : Song -> Json.Encode.Value
@@ -59,6 +82,7 @@ encodeSong record =
         [ ( "track", Json.Encode.string <| record.track )
         , ( "artist", Json.Encode.string <| record.artist )
         , ( "blocks", Json.Encode.list <| List.map encodeBlock <| record.blocks )
+        , ( "blocks", maybeEncode encodeYoutubeInfo record.youtube )
         ]
 
 

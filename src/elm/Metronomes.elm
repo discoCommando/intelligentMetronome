@@ -41,6 +41,7 @@ type alias YoutubeState =
     , url : String
     , startFrom : Float
     , startFromString : String
+    , cmdsAfterInit : List (Cmd Msg)
     }
 
 
@@ -81,7 +82,19 @@ songToModel song =
     , track = song.track
     , artist = song.artist
     , metronomes = List.map mapBlock song.blocks
-    , youtubeStatus = NotExisting
+    , youtubeStatus =
+        case song.youtube of
+            Nothing ->
+                NotExisting
+
+            Just ytinfo ->
+                Existing
+                    { youtubeId = ytinfo.id
+                    , startFrom = ytinfo.startFrom
+                    , startFromString = ytinfo.startFrom |> Basics.toString
+                    , url = "www.youtube.com/watch?v=" ++ ytinfo.id
+                    , cmdsAfterInit = [ youtubeShow (), youtubeCueVideo ytinfo.id ]
+                    }
     }
 
 
@@ -90,6 +103,13 @@ modelToSong model =
     { track = model.track
     , artist = model.artist
     , blocks = List.map .block model.metronomes
+    , youtube =
+        case model.youtubeStatus of
+            NotExisting ->
+                Nothing
+
+            Existing ys ->
+                Just { id = ys.youtubeId, startFrom = ys.startFrom }
     }
 
 
@@ -150,7 +170,11 @@ exampleSong =
                   ],
                   "maybeCount" : 3
                 }
-            ]
+            ],
+            "youtube" : {
+                "id" : "eNGzltK_tlc",
+                "startFrom": 0.89
+            }
         }
 """
     of
@@ -177,6 +201,7 @@ type Msg
     | YoutubeButtonClick
     | YoutubeUrlChange String
     | YoutubeStartFromChange String
+    | YoutubeReady
 
 
 insert : Int -> a -> List a -> List a
@@ -422,9 +447,9 @@ update msg model =
                             YoutubeButtonClick ->
                                 case model.youtubeStatus of
                                     NotExisting ->
-                                        { model | youtubeStatus = Existing <| YoutubeState "" "" 0 "0" }
+                                        { model | youtubeStatus = Existing <| YoutubeState "" "" 0 "0" [] }
                                             |> Return.singleton
-                                            |> Return.command (youtubeInit ())
+                                            |> Return.command (youtubeShow ())
 
                                     Existing ys ->
                                         { model | youtubeStatus = NotExisting }
@@ -471,6 +496,11 @@ update msg model =
                                                     |> Return.singleton
                                                     |> Return.map
                                                         (\ys -> { model | youtubeStatus = Existing { ys | startFromString = sf } })
+
+                                            YoutubeReady ->
+                                                model
+                                                    |> Return.singleton
+                                                    |> Return.command (Cmd.batch ys.cmdsAfterInit)
 
                                             _ ->
                                                 model |> Return.singleton
@@ -846,10 +876,13 @@ port youtubePlaying : (() -> msg) -> Sub msg
 port youtubePaused : (() -> msg) -> Sub msg
 
 
+port youtubeReady : (() -> msg) -> Sub msg
+
+
 port youtubeCueVideo : String -> Cmd msg
 
 
-port youtubeInit : () -> Cmd msg
+port youtubeShow : () -> Cmd msg
 
 
 port youtubeHide : () -> Cmd msg
@@ -872,6 +905,7 @@ subscriptions model =
             Sub.map TickMsg <| Metronome.subscriptions ws.actual
     , youtubePlaying <| Basics.always YoutubePlaying
     , youtubePaused <| Basics.always YoutubePaused
+    , youtubeReady <| Basics.always YoutubeReady
     ]
         |> Platform.Sub.batch
 

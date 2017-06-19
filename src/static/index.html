@@ -53,6 +53,7 @@
 
       function onPlayerReady (){
         player.addEventListener("onStateChange","onPlayerStateChange");
+        app.ports.youtubeReady.send(null);
       };
 
       function onPlayerStateChange(event){
@@ -79,7 +80,7 @@
       });
 
       app.ports.youtubeCueVideo.subscribe(function(id) {
-          player.cueVideoById(id);
+        player.cueVideoById(id);
       });
 
       app.ports.youtubeHide.subscribe(function() {
@@ -87,7 +88,7 @@
         p.setAttribute("class", "hidden");
       });
 
-      app.ports.youtubeInit.subscribe(function() {
+      app.ports.youtubeShow.subscribe(function() {
         var p = document.getElementById("player-container");
         p.setAttribute("class", "");
       });
