@@ -8,7 +8,6 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Time
 import Platform.Cmd
-import Animation exposing (px, turn, percent)
 import ViewBlock
 import String
 
@@ -488,6 +487,7 @@ blockToTime block =
 port click : String -> Platform.Cmd.Cmd msg
 
 
+main : Program Never Model Msg
 main =
     Html.program
         { init = init
