@@ -138,7 +138,7 @@ type Msg
     | ChangeTrack String
     | ChangeArtist String
     | YoutubePlaying
-    | YoutubePaused
+    | YoutubePaused Time.Time
     | YoutubeButtonClick
     | YoutubeUrlChange String
     | YoutubeStartFromChange String
@@ -499,12 +499,41 @@ update msg model =
                                                 )
                                             |> Return.command (youtubeCmd <| youtubePause ())
 
-                                    YoutubePaused ->
+                                    YoutubePaused time ->
                                         Metronome.update Metronome.Pause ws.actual
                                             |> Return.mapCmd (MetronomeMsg <| getActualIndex ws)
                                             |> Return.map
                                                 (\metronomeModel ->
-                                                    { model | status = Working { ws | actual = metronomeModel, workingStatus = Paused } }
+                                                    { ws | actual = metronomeModel, workingStatus = Paused }
+                                                )
+                                            |> Return.andThen
+                                                (\ws ->
+                                                    case model.youtubeStatus of
+                                                        NotExisting ->
+                                                            ws |> Return.singleton
+
+                                                        Existing ys ->
+                                                            case
+                                                                ws.previous
+                                                                    |> getNextTime ys.startFrom
+                                                            of
+                                                                Just x ->
+                                                                    let
+                                                                        timeToGo =
+                                                                            ((time - x) / Metronome.tempoToMs ws.actual.block.tempo) |> Basics.floor |> Basics.toFloat |> (*) Metronome.tempoToMs ws.actual.block.tempo
+                                                                    in
+                                                                        x
+                                                                            |> (+) timeToGo
+                                                                            |> Time.inSeconds
+                                                                            |> youtubeSeekTo
+                                                                            |> Return.return ws
+
+                                                                Nothing ->
+                                                                    ws |> Return.singleton
+                                                )
+                                            |> Return.map
+                                                (\ws ->
+                                                    { model | status = Working ws }
                                                 )
 
                                     Next ->
@@ -811,7 +840,7 @@ port youtubeStop : () -> Platform.Cmd.Cmd msg
 port youtubePlaying : (() -> msg) -> Sub msg
 
 
-port youtubePaused : (() -> msg) -> Sub msg
+port youtubePaused : (Float -> msg) -> Sub msg
 
 
 port youtubeReady : (() -> msg) -> Sub msg
@@ -838,7 +867,7 @@ subscriptions model =
         Working ws ->
             Sub.map TickMsg <| Metronome.subscriptions ws.actual
     , youtubePlaying <| Basics.always YoutubePlaying
-    , youtubePaused <| Basics.always YoutubePaused
+    , youtubePaused <| (\float -> YoutubePaused <| Time.second * float)
     , youtubeReady <| Basics.always YoutubeReady
     ]
         |> Platform.Sub.batch

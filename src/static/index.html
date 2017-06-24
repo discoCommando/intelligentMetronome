@@ -119,7 +119,7 @@
           app.ports.youtubePlaying.send(null);
         } 
         else if (event.data == YT.PlayerState.PAUSED){
-          app.ports.youtubePaused.send(null);
+          app.ports.youtubePaused.send(player.getCurrentTime());
         }  
       };
 
