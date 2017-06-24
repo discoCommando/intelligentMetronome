@@ -520,7 +520,12 @@ update msg model =
                                                                 Just x ->
                                                                     let
                                                                         timeToGo =
-                                                                            ((time - x) / Metronome.tempoToMs ws.actual.block.tempo) |> Basics.floor |> Basics.toFloat |> (*) Metronome.tempoToMs ws.actual.block.tempo
+                                                                            ((time - x)
+                                                                                / Metronome.tempoToMs ws.actual.block.tempo
+                                                                            )
+                                                                                |> Basics.floor
+                                                                                |> Basics.toFloat
+                                                                                |> (*) (Metronome.tempoToMs ws.actual.block.tempo)
                                                                     in
                                                                         x
                                                                             |> (+) timeToGo
@@ -649,6 +654,40 @@ update msg model =
                                                         (\ws ->
                                                             { model | status = Working ws }
                                                         )
+
+                                    YoutubePaused time ->
+                                        (case model.youtubeStatus of
+                                            NotExisting ->
+                                                ws |> Return.singleton
+
+                                            Existing ys ->
+                                                case
+                                                    ws.previous
+                                                        |> getNextTime ys.startFrom
+                                                of
+                                                    Just x ->
+                                                        let
+                                                            timeToGo =
+                                                                ((time - x)
+                                                                    / Metronome.tempoToMs ws.actual.block.tempo
+                                                                )
+                                                                    |> Basics.floor
+                                                                    |> Basics.toFloat
+                                                                    |> (*) (Metronome.tempoToMs ws.actual.block.tempo)
+                                                        in
+                                                            x
+                                                                |> (+) timeToGo
+                                                                |> Time.inSeconds
+                                                                |> youtubeSeekTo
+                                                                |> Return.return ws
+
+                                                    Nothing ->
+                                                        ws |> Return.singleton
+                                        )
+                                            |> Return.map
+                                                (\ws ->
+                                                    { model | status = Working ws }
+                                                )
 
                                     MetronomeMsg i msg ->
                                         case atWs i ws of
