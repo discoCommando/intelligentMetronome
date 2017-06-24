@@ -94,7 +94,7 @@ songToModel song =
                     , startFrom = ytinfo.startFrom
                     , startFromString = ytinfo.startFrom |> Basics.toString
                     , url = "www.youtube.com/watch?v=" ++ ytinfo.id
-                    , cmdsAfterInit = [ youtubeShow (), youtubeCueVideo ytinfo.id ]
+                    , cmdsAfterInit = [ youtubeShow (), youtubeCueVideo ( ytinfo.id, ytInfor.startFrom ) ]
                     }
     }
 
@@ -411,7 +411,7 @@ update msg model =
                                                     |> Return.andThen
                                                         (\ys ->
                                                             if (String.length ys.youtubeId == 11) then
-                                                                Return.return ys <| youtubeCueVideo ys.youtubeId
+                                                                Return.return ys <| youtubeCueVideo ( ys.youtubeId, ys.startFrom )
                                                             else
                                                                 ys |> Return.singleton
                                                         )
@@ -885,7 +885,7 @@ port youtubePaused : (Float -> msg) -> Sub msg
 port youtubeReady : (() -> msg) -> Sub msg
 
 
-port youtubeCueVideo : String -> Cmd msg
+port youtubeCueVideo : ( String, Float ) -> Cmd msg
 
 
 port youtubeShow : () -> Cmd msg
