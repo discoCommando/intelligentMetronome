@@ -1,7 +1,7 @@
 {
     "version": "1.0.0",
     "summary": "Intelligent Metronome",
-    "repository": "https://github.com/discoCommando/intelligentMetronome.git",
+    "repository": "https://github.com/discocommando/intelligentmetronome.git",
     "license": "MIT",
     "source-directories": [
         "src",

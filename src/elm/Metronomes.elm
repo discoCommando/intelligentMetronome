@@ -73,6 +73,7 @@ mapBlock block =
                 Nothing ->
                     "1"
         }
+    , initialTimeCorrection = Nothing
     }
 
 
@@ -702,7 +703,8 @@ viewMetronomes model =
 view : Model -> Html Msg
 view model =
     div []
-        [ Html.div [ class "title" ] [ text "Intelligent Metronome" ]
+        [ Html.text <| Basics.toString model
+        , Html.div [ class "title" ] [ text "Intelligent Metronome" ]
         , Html.div [ class "info" ]
             ([ text "Track"
              , p [] []

@@ -5,7 +5,7 @@ import Json.Decode exposing (field)
 
 
 type alias Block =
-    { tempo : Int
+    { tempo : Float
     , accents : List Int
     , maybeCount : Maybe Int
     }
@@ -24,7 +24,7 @@ maybeEncode encoder a =
 decodeBlock : Json.Decode.Decoder Block
 decodeBlock =
     Json.Decode.map3 Block
-        (field "tempo" Json.Decode.int)
+        (field "tempo" Json.Decode.float)
         (field "accents" <| Json.Decode.list Json.Decode.int)
         (Json.Decode.maybe <| field "maybeCount" Json.Decode.int)
 
@@ -32,7 +32,7 @@ decodeBlock =
 encodeBlock : Block -> Json.Encode.Value
 encodeBlock record =
     Json.Encode.object
-        [ ( "tempo", Json.Encode.int <| record.tempo )
+        [ ( "tempo", Json.Encode.float <| record.tempo )
         , ( "accents", Json.Encode.list <| List.map Json.Encode.int <| record.accents )
         , ( "maybeCount", maybeEncode Json.Encode.int record.maybeCount )
         ]

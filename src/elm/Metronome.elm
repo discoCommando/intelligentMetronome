@@ -10,11 +10,18 @@ import Time
 import Platform.Cmd
 import ViewBlock
 import String
+import Task
 
 
 type Click
     = High
     | Low
+
+
+type alias TimeCorrection =
+    { lastCorrectTickTime : Time.Time
+    , timeOffset : Time.Time
+    }
 
 
 type alias WorkingState =
@@ -27,7 +34,7 @@ type alias WorkingState =
 
 
 type Status
-    = Working WorkingState
+    = Working WorkingState TimeCorrection
     | Idle
     | Paused WorkingState
     | Finished
@@ -37,12 +44,14 @@ type alias Model =
     { block : Block
     , status : Status
     , temps : ViewBlock.Temps
+    , initialTimeCorrection : Maybe TimeCorrection
     }
 
 
 type Msg
-    = Tick
+    = Tick Time.Time
     | Start
+    | StartWithTime Time.Time
     | Pause
     | Stop
     | ViewMsg ViewBlock.Msg
@@ -72,7 +81,12 @@ wsToViewBlockws ws =
 
 wsFromIdle : Types.Block -> WorkingState
 wsFromIdle block =
-    { accents = block.accents, maybeCount = block.maybeCount, actual = [ 1 ], highlightCount = False, lastClick = High }
+    { accents = block.accents
+    , maybeCount = block.maybeCount
+    , actual = [ 1 ]
+    , highlightCount = False
+    , lastClick = High
+    }
 
 
 makeFinished : Model -> Model
@@ -86,7 +100,7 @@ makePaused model =
         Idle ->
             { model | status = Paused (wsFromIdle model.block) }
 
-        Working ws ->
+        Working ws tc ->
             { model | status = Paused ws }
 
         Finished ->
@@ -126,12 +140,31 @@ update msg model =
             Idle ->
                 case msg of
                     Start ->
+                        case model.initialTimeCorrection of
+                            Nothing ->
+                                Return.return model
+                                    (Time.now
+                                        |> Task.perform StartWithTime
+                                    )
+
+                            Just timeCorrection ->
+                                let
+                                    ws =
+                                        wsFromIdle model.block
+                                in
+                                    { model
+                                        | status = Working ws timeCorrection
+                                    }
+                                        |> Return.singleton
+                                        |> Return.command (click <| toString <| High)
+
+                    StartWithTime now ->
                         let
                             ws =
                                 wsFromIdle model.block
                         in
                             { model
-                                | status = Working ws
+                                | status = Working ws { lastCorrectTickTime = now, timeOffset = 0 }
                             }
                                 |> Return.singleton
                                 |> Return.command (click <| toString <| High)
@@ -236,7 +269,7 @@ update msg model =
                                 |> Return.singleton
 
                     ViewMsg (ViewBlock.ChangeTempo s) ->
-                        (case String.toInt s of
+                        (case String.toFloat s of
                             Result.Ok i ->
                                 if (i > 0) then
                                     let
@@ -266,41 +299,91 @@ update msg model =
                         model
                             |> Return.singleton
 
-            Working ws ->
+            Working ws tc ->
                 case msg of
-                    Tick ->
-                        case ws.maybeCount of
-                            Just count ->
-                                if (count <= 0) then
-                                    { model | status = Finished }
-                                        |> Return.singleton
-                                else
-                                    case stripList ws.accents of
-                                        ( beep, Maybe.Nothing ) ->
-                                            if count == 1 then
-                                                { model | status = Finished }
-                                                    |> Return.singleton
-                                            else
-                                                { model | status = Working { ws | accents = model.block.accents, maybeCount = Just <| count - 1, actual = [ 1 ], highlightCount = True, lastClick = beepToClick beep } }
+                    Tick time ->
+                        let
+                            newYs =
+                                (let
+                                    newCorrectTime =
+                                        tc.lastCorrectTickTime + tempoToMs model.block.tempo
+                                 in
+                                    { lastCorrectTickTime = newCorrectTime
+                                    , timeOffset = newCorrectTime - time
+                                    }
+                                )
+                        in
+                            case ws.maybeCount of
+                                Just count ->
+                                    if (count <= 0) then
+                                        { model | status = Finished }
+                                            |> Return.singleton
+                                    else
+                                        case stripList ws.accents of
+                                            ( beep, Maybe.Nothing ) ->
+                                                if count == 1 then
+                                                    { model | status = Finished }
+                                                        |> Return.singleton
+                                                else
+                                                    { model
+                                                        | status =
+                                                            Working
+                                                                { ws
+                                                                    | accents = model.block.accents
+                                                                    , maybeCount = Just <| count - 1
+                                                                    , actual = [ 1 ]
+                                                                    , highlightCount = True
+                                                                    , lastClick = beepToClick beep
+                                                                }
+                                                                newYs
+                                                    }
+                                                        |> Return.singleton
+                                                        |> Return.command (click <| toString <| beepToClick beep)
+
+                                            ( beep, Maybe.Just newAccents ) ->
+                                                { model
+                                                    | status =
+                                                        Working
+                                                            { ws
+                                                                | accents = newAccents
+                                                                , actual = updateActual beep ws.actual
+                                                                , highlightCount = False
+                                                                , lastClick = beepToClick beep
+                                                            }
+                                                            newYs
+                                                }
                                                     |> Return.singleton
                                                     |> Return.command (click <| toString <| beepToClick beep)
 
-                                        ( beep, Maybe.Just newAccents ) ->
-                                            { model | status = Working { ws | accents = newAccents, actual = updateActual beep ws.actual, highlightCount = False, lastClick = beepToClick beep } }
+                                Nothing ->
+                                    case stripList ws.accents of
+                                        ( beep, Maybe.Nothing ) ->
+                                            { model
+                                                | status =
+                                                    Working
+                                                        { ws
+                                                            | accents = model.block.accents
+                                                            , actual = [ 1 ]
+                                                            , lastClick = beepToClick beep
+                                                        }
+                                                        newYs
+                                            }
                                                 |> Return.singleton
                                                 |> Return.command (click <| toString <| beepToClick beep)
 
-                            Nothing ->
-                                case stripList ws.accents of
-                                    ( beep, Maybe.Nothing ) ->
-                                        { model | status = Working { ws | accents = model.block.accents, actual = [ 1 ], lastClick = beepToClick beep } }
-                                            |> Return.singleton
-                                            |> Return.command (click <| toString <| beepToClick beep)
-
-                                    ( beep, Maybe.Just newAccents ) ->
-                                        { model | status = Working { ws | accents = newAccents, actual = updateActual beep ws.actual, lastClick = beepToClick beep } }
-                                            |> Return.singleton
-                                            |> Return.command (click <| toString <| beepToClick beep)
+                                        ( beep, Maybe.Just newAccents ) ->
+                                            { model
+                                                | status =
+                                                    Working
+                                                        { ws
+                                                            | accents = newAccents
+                                                            , actual = updateActual beep ws.actual
+                                                            , lastClick = beepToClick beep
+                                                        }
+                                                        newYs
+                                            }
+                                                |> Return.singleton
+                                                |> Return.command (click <| toString <| beepToClick beep)
 
                     Pause ->
                         { model | status = Paused ws }
@@ -317,7 +400,20 @@ update msg model =
             Paused ws ->
                 case msg of
                     Start ->
-                        { model | status = Working ws }
+                        case model.initialTimeCorrection of
+                            Nothing ->
+                                Return.return model
+                                    (Time.now
+                                        |> Task.perform StartWithTime
+                                    )
+
+                            Just timeCorrection ->
+                                { model | status = Working ws timeCorrection }
+                                    |> Return.singleton
+                                    |> Return.command (click <| toString <| ws.lastClick)
+
+                    StartWithTime now ->
+                        { model | status = Working ws { lastCorrectTickTime = now, timeOffset = 0 } }
                             |> Return.singleton
                             |> Return.command (click <| toString <| ws.lastClick)
 
@@ -332,12 +428,31 @@ update msg model =
             Finished ->
                 case msg of
                     Start ->
+                        case model.initialTimeCorrection of
+                            Nothing ->
+                                Return.return model
+                                    (Time.now
+                                        |> Task.perform StartWithTime
+                                    )
+
+                            Just timeCorrection ->
+                                let
+                                    ws =
+                                        wsFromIdle model.block
+                                in
+                                    { model
+                                        | status = Working ws timeCorrection
+                                    }
+                                        |> Return.singleton
+                                        |> Return.command (click <| toString <| High)
+
+                    StartWithTime now ->
                         let
                             ws =
                                 wsFromIdle model.block
                         in
                             { model
-                                | status = Working ws
+                                | status = Working ws { lastCorrectTickTime = now, timeOffset = 0 }
                             }
                                 |> Return.singleton
                                 |> Return.command (click <| toString <| High)
@@ -353,7 +468,7 @@ view model =
         Idle ->
             ViewBlock.view { status = ViewBlock.Idle, block = model.block, temps = model.temps }
 
-        Working ws ->
+        Working ws _ ->
             ViewBlock.view { status = ViewBlock.Working <| wsToViewBlockws ws, block = model.block, temps = model.temps }
 
         Paused ws ->
@@ -375,7 +490,7 @@ viewTest model =
                 Idle ->
                     Html.Events.onClick Start
 
-                Working ws ->
+                Working ws _ ->
                     Html.Events.onClick Pause
 
                 Paused ws ->
@@ -388,7 +503,7 @@ viewTest model =
                 Idle ->
                     Html.text "Start"
 
-                Working ws ->
+                Working ws _ ->
                     Html.text "Pause"
 
                 Paused ws ->
@@ -402,7 +517,7 @@ viewTest model =
                 Idle ->
                     Html.Attributes.disabled True
 
-                Working ws ->
+                Working ws _ ->
                     Html.Events.onClick Stop
 
                 Paused ws ->
@@ -439,20 +554,20 @@ block =
 
 init : Return Msg Model
 init =
-    Model block (Idle) { tempo = Basics.toString block, count = "5" }
+    Model block (Idle) { tempo = Basics.toString block, count = "5" } Nothing
         |> Return.singleton
 
 
-tempoToMs : Int -> Time.Time
+tempoToMs : Float -> Time.Time
 tempoToMs tempo =
-    (60000 * Time.millisecond) / Basics.toFloat tempo
+    (60000 * Time.millisecond) / tempo
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.status of
-        Working ws ->
-            Time.every (tempoToMs model.block.tempo) <| Basics.always Tick
+        Working ws tc ->
+            Time.every (tempoToMs model.block.tempo + tc.timeOffset) Tick
 
         _ ->
             Sub.none
@@ -463,6 +578,7 @@ emptyModel =
     { block = { tempo = 120, accents = [], maybeCount = Nothing }
     , status = Idle
     , temps = { tempo = "120", count = "1" }
+    , initialTimeCorrection = Nothing
     }
 
 
@@ -479,7 +595,7 @@ blockToTime block =
                 |> Basics.toFloat
                 |> (*) Time.millisecond
              )
-                / (block.tempo |> Basics.toFloat)
+                / (block.tempo)
             )
                 |> Just
 

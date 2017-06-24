@@ -103,7 +103,7 @@ type AnimationType
     | NoAnimation
 
 
-viewAccent : AnimationType -> String -> Int -> Html Msg
+viewAccent : AnimationType -> String -> Float -> Html Msg
 viewAccent animation label tempo =
     let
         attributes =
@@ -112,7 +112,7 @@ viewAccent animation label tempo =
                     [ class "accent highlight"
                     , style
                         [ ( "animation-duration"
-                          , (Basics.toString <| Basics.floor ((60000 * Time.millisecond) / Basics.toFloat tempo)) ++ "ms"
+                          , (Basics.toString <| Basics.floor ((60000 * Time.millisecond) / tempo)) ++ "ms"
                           )
                         ]
                     ]
@@ -249,7 +249,7 @@ viewBlockWorking block ws =
                     ]
                 , style
                     [ ( "animation-duration"
-                      , (Basics.toString <| Basics.floor ((60000 * Time.millisecond) / Basics.toFloat block.tempo)) ++ "ms"
+                      , (Basics.toString <| Basics.floor ((60000 * Time.millisecond) / block.tempo)) ++ "ms"
                       )
                     ]
                 ]
@@ -300,7 +300,7 @@ viewBlockPaused block ws =
                     ]
                 , style
                     [ ( "animation-duration"
-                      , (Basics.toString <| Basics.floor ((60000 * Time.millisecond) / Basics.toFloat block.tempo)) ++ "ms"
+                      , (Basics.toString <| Basics.floor ((60000 * Time.millisecond) / block.tempo)) ++ "ms"
                       )
                     ]
                 ]
@@ -350,7 +350,7 @@ viewBlockFinished block =
                     ]
                 , style
                     [ ( "animation-duration"
-                      , (Basics.toString <| Basics.floor ((60000 * Time.millisecond) / Basics.toFloat block.tempo)) ++ "ms"
+                      , (Basics.toString <| Basics.floor ((60000 * Time.millisecond) / block.tempo)) ++ "ms"
                       )
                     ]
                 ]
