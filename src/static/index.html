@@ -132,13 +132,13 @@
         player.playVideo();
       });
 
-      app.ports.youtubeStop.subscribe(function() {
+      app.ports.youtubeStop.subscribe(function(seconds) {
         player.pauseVideo();
-        player.seekTo(0, true);
+        player.seekTo(seconds, true);
       });
 
-      app.ports.youtubeCueVideo.subscribe(function(id) {
-        player.cueVideoById(id);
+      app.ports.youtubeCueVideo.subscribe(function(args) {
+        player.cueVideoById(args[0], args[1]);
       });
 
       app.ports.youtubeHide.subscribe(function() {

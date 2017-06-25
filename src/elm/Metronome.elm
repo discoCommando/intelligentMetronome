@@ -30,6 +30,7 @@ type alias WorkingState =
     , actual : List Int
     , highlightCount : Bool
     , lastClick : Click
+    , passed : Int
     }
 
 
@@ -86,6 +87,7 @@ wsFromIdle block =
     , actual = [ 1 ]
     , highlightCount = False
     , lastClick = High
+    , passed = 0
     }
 
 
@@ -334,6 +336,7 @@ update msg model =
                                                                     , actual = [ 1 ]
                                                                     , highlightCount = True
                                                                     , lastClick = beepToClick beep
+                                                                    , passed = ws.passed + 1
                                                                 }
                                                                 newYs
                                                     }
@@ -365,6 +368,7 @@ update msg model =
                                                             | accents = model.block.accents
                                                             , actual = [ 1 ]
                                                             , lastClick = beepToClick beep
+                                                            , passed = ws.passed + 1
                                                         }
                                                         newYs
                                             }
@@ -598,6 +602,36 @@ blockToTime block =
                 / (block.tempo)
             )
                 |> Just
+
+
+timeElapsed : Model -> Time.Time
+timeElapsed model =
+    let
+        sumAccents ws =
+            let
+                temp =
+                    List.sum model.block.accents
+            in
+                if temp == 0 then
+                    ws.passed
+                else
+                    ws.passed * temp
+
+        helper ws =
+            tempoToMs model.block.tempo * (sumAccents ws + List.sum ws.actual - 1 |> Basics.toFloat)
+    in
+        case model.status of
+            Idle ->
+                0
+
+            Working ws _ ->
+                helper ws
+
+            Paused ws ->
+                helper ws
+
+            Finished ->
+                0
 
 
 port click : String -> Platform.Cmd.Cmd msg

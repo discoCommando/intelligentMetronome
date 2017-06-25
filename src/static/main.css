@@ -3,9 +3,7 @@ body {
 }
 
 body * {
-
     font-family: 'Roboto Condensed', 'Source Sans Pro', 'Trebuchet MS', 'Lucida Grande', 'Bitstream Vera Sans', 'Helvetica Neue', sans-serif;
-
 }
 
 .accent {
@@ -21,12 +19,12 @@ body * {
     background-color: White;
     margin : 2px;
     text-align: center;
-    font-size: 26;
+    font-size: 26px;
     line-height: 45px;
 }
 
 .add-remove-buttons {
-    display: inline-grid;
+    display: inline-table;
     position: absolute;
 }
 

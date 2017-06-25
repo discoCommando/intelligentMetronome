@@ -94,7 +94,7 @@ songToModel song =
                     , startFrom = ytinfo.startFrom
                     , startFromString = ytinfo.startFrom |> Basics.toString
                     , url = "www.youtube.com/watch?v=" ++ ytinfo.id
-                    , cmdsAfterInit = [ youtubeShow (), youtubeCueVideo ( ytinfo.id, ytInfor.startFrom ) ]
+                    , cmdsAfterInit = [ youtubeShow (), youtubeCueVideo ( ytinfo.id, ytinfo.startFrom ) ]
                     }
     }
 
@@ -292,6 +292,14 @@ update msg model =
                 cmd
             else
                 Platform.Cmd.none
+
+        youtubeStop_ =
+            case model.youtubeStatus of
+                NotExisting ->
+                    Cmd.none
+
+                Existing ys ->
+                    youtubeStop ys.startFrom
     in
         case msg of
             ChangeTrack s ->
@@ -411,7 +419,7 @@ update msg model =
                                                     |> Return.andThen
                                                         (\ys ->
                                                             if (String.length ys.youtubeId == 11) then
-                                                                Return.return ys <| youtubeCueVideo ( ys.youtubeId, ys.startFrom )
+                                                                Return.return ys <| youtubeCueVideo ( ys.youtubeId, Time.second * ys.startFrom )
                                                             else
                                                                 ys |> Return.singleton
                                                         )
@@ -422,14 +430,18 @@ update msg model =
                                                 (case String.toFloat sf of
                                                     Ok startFrom ->
                                                         if (startFrom >= 0) then
-                                                            { ys | startFrom = startFrom }
+                                                            Return.return { ys | startFrom = startFrom }
+                                                                (if String.length ys.youtubeId == 11 then
+                                                                    youtubeCueVideo ( ys.youtubeId, startFrom )
+                                                                 else
+                                                                    Cmd.none
+                                                                )
                                                         else
-                                                            ys
+                                                            ys |> Return.singleton
 
                                                     _ ->
-                                                        ys
+                                                        ys |> Return.singleton
                                                 )
-                                                    |> Return.singleton
                                                     |> Return.map
                                                         (\ys -> { model | youtubeStatus = Existing { ys | startFromString = sf } })
 
@@ -472,7 +484,7 @@ update msg model =
                                                             { model | status = Idle }
                                                                 |> Return.singleton
                                                                 |> Return.command (Platform.Cmd.map (MetronomeMsg <| getActualIndex ws) metronomeCmd)
-                                                                |> Return.command (youtubeCmd <| youtubeStop ())
+                                                                |> Return.command (youtubeStop_)
 
                                                         x :: xs ->
                                                             let
@@ -518,20 +530,11 @@ update msg model =
                                                                     |> getNextTime ys.startFrom
                                                             of
                                                                 Just x ->
-                                                                    let
-                                                                        timeToGo =
-                                                                            ((time - x)
-                                                                                / Metronome.tempoToMs ws.actual.block.tempo
-                                                                            )
-                                                                                |> Basics.floor
-                                                                                |> Basics.toFloat
-                                                                                |> (*) (Metronome.tempoToMs ws.actual.block.tempo)
-                                                                    in
-                                                                        x
-                                                                            |> (+) timeToGo
-                                                                            |> Time.inSeconds
-                                                                            |> youtubeSeekTo
-                                                                            |> Return.return ws
+                                                                    x
+                                                                        |> (+) (Metronome.timeElapsed ws.actual)
+                                                                        |> Time.inSeconds
+                                                                        |> youtubeSeekTo
+                                                                        |> Return.return ws
 
                                                                 Nothing ->
                                                                     ws |> Return.singleton
@@ -546,7 +549,7 @@ update msg model =
                                             [] ->
                                                 { model | status = Idle }
                                                     |> Return.singleton
-                                                    |> Return.command (youtubeCmd <| youtubeStop ())
+                                                    |> Return.command (youtubeStop_)
 
                                             x :: xs ->
                                                 Metronome.update Metronome.Start x
@@ -569,6 +572,7 @@ update msg model =
                                                                     of
                                                                         Just x ->
                                                                             x
+                                                                                + 1
                                                                                 |> Time.inSeconds
                                                                                 |> youtubeSeekTo
                                                                                 |> Return.return ws
@@ -584,7 +588,7 @@ update msg model =
                                     Stop ->
                                         { model | status = Idle }
                                             |> Return.singleton
-                                            |> Return.command (youtubeCmd <| youtubeStop ())
+                                            |> Return.command (youtubeStop_)
 
                                     _ ->
                                         model
@@ -617,14 +621,14 @@ update msg model =
                                     Stop ->
                                         { model | status = Idle }
                                             |> Return.singleton
-                                            |> Return.command (youtubeCmd <| youtubeStop ())
+                                            |> Return.command (youtubeStop_)
 
                                     Next ->
                                         case ws.next of
                                             [] ->
                                                 { model | status = Idle }
                                                     |> Return.singleton
-                                                    |> Return.command (youtubeCmd <| youtubeStop ())
+                                                    |> Return.command (youtubeStop_)
 
                                             x :: xs ->
                                                 { ws | previous = ws.previous ++ [ Metronome.makeFinished ws.actual ], actual = Metronome.makePaused x, next = xs, workingStatus = Paused }
@@ -666,20 +670,11 @@ update msg model =
                                                         |> getNextTime ys.startFrom
                                                 of
                                                     Just x ->
-                                                        let
-                                                            timeToGo =
-                                                                ((time - x)
-                                                                    / Metronome.tempoToMs ws.actual.block.tempo
-                                                                )
-                                                                    |> Basics.floor
-                                                                    |> Basics.toFloat
-                                                                    |> (*) (Metronome.tempoToMs ws.actual.block.tempo)
-                                                        in
-                                                            x
-                                                                |> (+) timeToGo
-                                                                |> Time.inSeconds
-                                                                |> youtubeSeekTo
-                                                                |> Return.return ws
+                                                        x
+                                                            |> (+) (Metronome.timeElapsed ws.actual)
+                                                            |> Time.inSeconds
+                                                            |> youtubeSeekTo
+                                                            |> Return.return ws
 
                                                     Nothing ->
                                                         ws |> Return.singleton
@@ -873,7 +868,7 @@ port youtubePlay : Maybe Float -> Platform.Cmd.Cmd msg
 port youtubePause : () -> Platform.Cmd.Cmd msg
 
 
-port youtubeStop : () -> Platform.Cmd.Cmd msg
+port youtubeStop : Float -> Platform.Cmd.Cmd msg
 
 
 port youtubePlaying : (() -> msg) -> Sub msg
